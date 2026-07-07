@@ -1,5 +1,5 @@
 export const Colors = {
-  // Palette from README
+  // Purple Palette from README
   blushPop: '#FFB2E6',
   plum: '#F6A2ED',
   violet: '#EC92F3',
@@ -16,22 +16,15 @@ export const Colors = {
   offWhite: '#FAF9FB',
   nearBlack: '#1A1420',
 
-  dark: {
-    text: '#d4d4d4',
-    title: '#fff',
-    background: '#252231',
-    navBackground: '#201e2b',
-    iconColour: '#9591a5',
-    iconColourFocused: '#fff',
-    uiBackground: '#2f2b3d',
-  },
-  light: {
-    text: '#625f72',
-    title: '#201e2b',
-    background: '#e0dfe8',
-    navBackground: '#e8e7ef',
-    iconColour: '#686477',
-    iconColourFocused: '#201e2b',
-    uiBackground: '#d6d5e1',
-  }
+  // UI Colors using purple palette
+  background: '#170930',
+  cardBackground: '#2a1257',
+  cardBorder: 'rgba(255, 255, 255, 0.12)',
+  text: '#FFFFFF',
+  title: '#FFFFFF',
+  secondaryText: '#C468FF',
+  iconColour: '#9A52FF',
+  iconColourFocused: '#FFFFFF',
+  glassBackground: 'rgba(42, 20, 80, 0.5)',
+  glassBorder: 'rgba(255, 255, 255, 0.08)',
 }

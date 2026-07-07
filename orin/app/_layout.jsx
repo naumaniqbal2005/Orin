@@ -1,11 +1,17 @@
-import { StyleSheet, Text, View, useColorScheme } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { Stack } from 'expo-router'
 import { useEffect } from 'react'
 import { Colors } from '../constants/color'
 import { client } from '../lib/appwrite'
+import { StatusBar } from 'expo-status-bar'
+import { useFonts } from 'expo-font'
 
 const RootLayout = () => {
-
+    const [fontsLoaded] = useFonts({
+        'Poppins-Regular': require('@expo-google-fonts/poppins/Poppins_400Regular.ttf'),
+        'Poppins-Bold': require('@expo-google-fonts/poppins/Poppins_700Bold.ttf'),
+        'Poppins-Medium': require('@expo-google-fonts/poppins/Poppins_500Medium.ttf'),
+    })
 
     useEffect(() => {
         client.ping().then(() => {
@@ -15,19 +21,18 @@ const RootLayout = () => {
         });
     }, []);
 
-    const colorScheme = useColorScheme();
-    const theme = Colors[colorScheme] ?? Colors.light;
+    if (!fontsLoaded) {
+        return null
+    }
 
-    
-    
   return (
-    <>
-        {/* <StatusBar value = 'auto' /> */}
+    <View style={{ flex: 1 }}>
+        <StatusBar style="light" />
         <Stack screenOptions={{
-        headerStyle : {backgroundColor : theme.navBackground},
-        headerTintColor : theme.title,
+        headerStyle : {backgroundColor : Colors.background},
+        headerTintColor : Colors.title,
         headerTitleStyle : {
-            fontWeight : 'bold',
+            fontFamily: 'Poppins-Bold',
             fontSize : 15
         },
         headerTitleAlign: 'center'
@@ -35,9 +40,9 @@ const RootLayout = () => {
 
             <Stack.Screen name="(tabs)" options = {{headerShown: false}}/>
             <Stack.Screen name="(auth)" options = {{headerShown: false}}/>
-            
+
         </Stack>
-    </>
+    </View>
   )
 }
 

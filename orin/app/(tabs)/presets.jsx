@@ -5,7 +5,7 @@ import ThemedText from '../../components/ThemedText';
 export default function Library() {
   return (
     <ThemedView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <ThemedText title>Activity Library</ThemedText>
+      <ThemedText title>Presets</ThemedText>
     </ThemedView>
   );
 }
