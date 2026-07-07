@@ -1,17 +1,24 @@
-import { ID } from 'react-native-appwrite';
-import { databases, DATABASE_ID } from './appwrite';
+import { ID, Query } from 'react-native-appwrite';
+import { tablesDB, DATABASE_ID } from './appwrite';
+import { getCurrentUserId, userDocumentPermissions } from './auth';
 
-const COLLECTION_ID = 'activities';
+const TABLE_ID = 'activities';
 
 export const activitiesService = {
   async create(activity) {
     try {
-      return await databases.createDocument(
-        DATABASE_ID,
-        COLLECTION_ID,
-        ID.unique(),
-        activity
-      );
+      const userId = await getCurrentUserId();
+      return await tablesDB.createRow({
+        databaseId : DATABASE_ID,
+        tableId : TABLE_ID,
+        rowId : ID.unique(),
+        data : {
+          userId,
+          name: activity.name,
+          description: activity.description ?? '',
+        },
+        permissions : userDocumentPermissions(userId)
+      })
     } catch (error) {
       console.error('Error creating activity:', error);
       throw error;
@@ -20,7 +27,13 @@ export const activitiesService = {
 
   async list() {
     try {
-      return await databases.listDocuments(DATABASE_ID, COLLECTION_ID);
+      return await tablesDB.listRows({
+        databaseId : DATABASE_ID,
+        tableId : TABLE_ID,
+        queries : [
+          Query.equal('userId', await getCurrentUserId())
+        ]
+      });
     } catch (error) {
       console.error('Error listing activities:', error);
       throw error;
@@ -29,7 +42,11 @@ export const activitiesService = {
 
   async get(id) {
     try {
-      return await databases.getDocument(DATABASE_ID, COLLECTION_ID, id);
+      return await tablesDB.getRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: id
+      });
     } catch (error) {
       console.error('Error getting activity:', error);
       throw error;
@@ -38,7 +55,12 @@ export const activitiesService = {
 
   async update(id, data) {
     try {
-      return await databases.updateDocument(DATABASE_ID, COLLECTION_ID, id, data);
+      return await tablesDB.updateRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: id,
+        data: data
+      });
     } catch (error) {
       console.error('Error updating activity:', error);
       throw error;
@@ -47,10 +69,14 @@ export const activitiesService = {
 
   async delete(id) {
     try {
-      return await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id);
+      return await tablesDB.deleteRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: id
+      });
     } catch (error) {
       console.error('Error deleting activity:', error);
       throw error;
     }
-  }
+  },
 };

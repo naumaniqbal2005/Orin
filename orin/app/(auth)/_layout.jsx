@@ -1,17 +1,29 @@
-import { StyleSheet } from 'react-native'
-import React from 'react'
-import { Stack } from 'expo-router'
+import { ActivityIndicator } from 'react-native';
+import { Redirect, Stack } from 'expo-router';
+import { useAuth } from '../../context/AuthContext';
+import ThemedView from '../../components/ThemedView';
 
-const AuthLayout = () => {
+export default function AuthLayout() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <ThemedView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#8447FF" />
+      </ThemedView>
+    );
+  }
+
+  if (user) {
+    return <Redirect href="/activity" />;
+  }
+
   return (
-    <Stack 
-    screenOptions={{
-      headerShown: false, animation: 'fade'
-    }}
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+      }}
     />
-  )
+  );
 }
-
-export default AuthLayout
-
-const styles = StyleSheet.create({}) 

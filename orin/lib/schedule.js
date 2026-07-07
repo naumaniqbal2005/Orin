@@ -1,17 +1,20 @@
-import { ID } from 'react-native-appwrite';
-import { databases, DATABASE_ID } from './appwrite';
+import { ID, Query } from 'react-native-appwrite';
+import { tablesDB, DATABASE_ID } from './appwrite';
+import { getCurrentUserId, userDocumentPermissions } from './auth';
 
-const COLLECTION_ID = 'schedule';
+const TABLE_ID = 'schedule';
 
 export const scheduleService = {
   async create(slot) {
     try {
-      return await databases.createDocument(
-        DATABASE_ID,
-        COLLECTION_ID,
-        ID.unique(),
-        slot
-      );
+      const userId = await getCurrentUserId();
+      return await tablesDB.createRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: ID.unique(),
+        data: { ...slot, userId },
+        permissions: userDocumentPermissions(userId)
+      });
     } catch (error) {
       console.error('Error creating schedule slot:', error);
       throw error;
@@ -20,9 +23,16 @@ export const scheduleService = {
 
   async list(date) {
     try {
-      // Filter slots by date if provided
-      const queries = date ? [`equal("date", "${date}")`] : [];
-      return await databases.listDocuments(DATABASE_ID, COLLECTION_ID, queries);
+      const userId = await getCurrentUserId();
+      const queries = [Query.equal('userId', userId)];
+      if (date) {
+        queries.push(Query.equal('date', date));
+      }
+      return await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        queries: queries
+      });
     } catch (error) {
       console.error('Error listing schedule slots:', error);
       throw error;
@@ -31,7 +41,11 @@ export const scheduleService = {
 
   async get(id) {
     try {
-      return await databases.getDocument(DATABASE_ID, COLLECTION_ID, id);
+      return await tablesDB.getRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: id
+      });
     } catch (error) {
       console.error('Error getting schedule slot:', error);
       throw error;
@@ -40,7 +54,12 @@ export const scheduleService = {
 
   async update(id, data) {
     try {
-      return await databases.updateDocument(DATABASE_ID, COLLECTION_ID, id, data);
+      return await tablesDB.updateRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: id,
+        data: data
+      });
     } catch (error) {
       console.error('Error updating schedule slot:', error);
       throw error;
@@ -49,7 +68,11 @@ export const scheduleService = {
 
   async delete(id) {
     try {
-      return await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id);
+      return await tablesDB.deleteRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: id
+      });
     } catch (error) {
       console.error('Error deleting schedule slot:', error);
       throw error;
@@ -58,15 +81,19 @@ export const scheduleService = {
 
   async getWeekRange(startDate, endDate) {
     try {
-      // Get all slots within a date range
-      const queries = [
-        `greaterThan("date", "${startDate}")`,
-        `lessThan("date", "${endDate}")`
-      ];
-      return await databases.listDocuments(DATABASE_ID, COLLECTION_ID, queries);
+      const userId = await getCurrentUserId();
+      return await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        queries: [
+          Query.equal('userId', userId),
+          Query.greaterThanEqual('date', startDate),
+          Query.lessThanEqual('date', endDate),
+        ]
+      });
     } catch (error) {
       console.error('Error getting week schedule:', error);
       throw error;
     }
-  }
+  },
 };

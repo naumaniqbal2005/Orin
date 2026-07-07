@@ -1,17 +1,20 @@
-import { ID } from 'react-native-appwrite';
-import { databases, DATABASE_ID } from './appwrite';
+import { ID, Query } from 'react-native-appwrite';
+import { tablesDB, DATABASE_ID } from './appwrite';
+import { getCurrentUserId, userDocumentPermissions } from './auth';
 
-const COLLECTION_ID = 'checkins';
+const TABLE_ID = 'checkins';
 
 export const checkinsService = {
   async create(checkin) {
     try {
-      return await databases.createDocument(
-        DATABASE_ID,
-        COLLECTION_ID,
-        ID.unique(),
-        checkin
-      );
+      const userId = await getCurrentUserId();
+      return await tablesDB.createRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: ID.unique(),
+        data: { ...checkin, userId },
+        permissions: userDocumentPermissions(userId)
+      });
     } catch (error) {
       console.error('Error creating check-in:', error);
       throw error;
@@ -20,7 +23,14 @@ export const checkinsService = {
 
   async list() {
     try {
-      return await databases.listDocuments(DATABASE_ID, COLLECTION_ID);
+      const userId = await getCurrentUserId();
+      return await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        queries: [
+          Query.equal('userId', userId),
+        ]
+      });
     } catch (error) {
       console.error('Error listing check-ins:', error);
       throw error;
@@ -29,8 +39,15 @@ export const checkinsService = {
 
   async getByScheduleSlot(scheduleSlotId) {
     try {
-      const queries = [`equal("scheduleSlotId", "${scheduleSlotId}")`];
-      return await databases.listDocuments(DATABASE_ID, COLLECTION_ID, queries);
+      const userId = await getCurrentUserId();
+      return await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        queries: [
+          Query.equal('userId', userId),
+          Query.equal('scheduleSlotId', scheduleSlotId),
+        ]
+      });
     } catch (error) {
       console.error('Error getting check-in by schedule slot:', error);
       throw error;
@@ -39,7 +56,12 @@ export const checkinsService = {
 
   async update(id, data) {
     try {
-      return await databases.updateDocument(DATABASE_ID, COLLECTION_ID, id, data);
+      return await tablesDB.updateRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: id,
+        data: data
+      });
     } catch (error) {
       console.error('Error updating check-in:', error);
       throw error;
@@ -48,7 +70,11 @@ export const checkinsService = {
 
   async delete(id) {
     try {
-      return await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id);
+      return await tablesDB.deleteRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: id
+      });
     } catch (error) {
       console.error('Error deleting check-in:', error);
       throw error;
@@ -57,14 +83,19 @@ export const checkinsService = {
 
   async getWeekRange(startDate, endDate) {
     try {
-      const queries = [
-        `greaterThan("timestamp", "${startDate}")`,
-        `lessThan("timestamp", "${endDate}")`
-      ];
-      return await databases.listDocuments(DATABASE_ID, COLLECTION_ID, queries);
+      const userId = await getCurrentUserId();
+      return await tablesDB.listRows({
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        queries: [
+          Query.equal('userId', userId),
+          Query.greaterThanEqual('timestamp', startDate),
+          Query.lessThanEqual('timestamp', endDate),
+        ]
+      });
     } catch (error) {
       console.error('Error getting week check-ins:', error);
       throw error;
     }
-  }
+  },
 };

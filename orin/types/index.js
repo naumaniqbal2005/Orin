@@ -1,49 +1,46 @@
 // Basic data models for the Scheduler app
+// Appwrite auto-adds $id, $createdAt, $updatedAt on every document.
 
 export const Activity = {
   id: 'string',
+  userId: 'string',
   name: 'string',
-  icon: 'string',
-  color: 'string',
-  category: 'string',
-  defaultDuration: 'number'
-};
-
-export const Set = {
-  id: 'string',
-  name: 'string',
-  activityIds: 'array'
+  description: 'string',
 };
 
 export const Preset = {
   id: 'string',
+  userId: 'string',
   name: 'string',
   description: 'string',
   color: 'string',
-  daySlots: 'array' // 7 entries, each an array of {activityId, hourStart, duration}
+  daySlots: 'string', // JSON: 7 entries, each an array of { activityId, hourStart, duration }
 };
 
 export const ScheduleSlot = {
   id: 'string',
-  date: 'string', // ISO date string
+  userId: 'string',
+  date: 'string', // ISO date YYYY-MM-DD
   hourStart: 'number',
   duration: 'number',
   activityId: 'string',
-  status: 'string' // 'upcoming' | 'done' | 'missed' | 'unscheduled'
+  status: 'string', // 'upcoming' | 'done' | 'missed' | 'unscheduled'
 };
 
 export const CheckIn = {
   id: 'string',
+  userId: 'string',
   scheduleSlotId: 'string',
   status: 'string', // 'done' | 'missed'
   note: 'string',
   photoUrl: 'string',
-  timestamp: 'string'
+  timestamp: 'string',
 };
 
 export const Achievement = {
   id: 'string',
+  userId: 'string',
   type: 'string',
   threshold: 'number',
-  unlockedAt: 'string'
+  unlockedAt: 'string',
 };
