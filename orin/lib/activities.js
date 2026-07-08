@@ -27,15 +27,19 @@ export const activitiesService = {
 
   async list() {
     try {
-      return await tablesDB.listRows({
+      console.log('Listing activities with DATABASE_ID:', DATABASE_ID, 'TABLE_ID:', TABLE_ID);
+      const result = await tablesDB.listRows({
         databaseId : DATABASE_ID,
         tableId : TABLE_ID,
         queries : [
           Query.equal('userId', await getCurrentUserId())
         ]
       });
+      console.log('List result:', result);
+      return result;
     } catch (error) {
       console.error('Error listing activities:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
   },

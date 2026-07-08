@@ -6,16 +6,26 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "statusBarStyle": "light-content"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#170930",
+        "backgroundColor": "#202020",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "statusBar": {
+        "backgroundColor": "#202020",
+        "barStyle": "light-content",
+        "translucent": false
+      },
+      "navigationBar": {
+        "backgroundColor": "#202020",
+        "barStyle": "light-content"
       }
     },
     "web": {
@@ -23,7 +33,16 @@
     },
     "plugins": [
       "expo-router",
-      "expo-status-bar"
+      [
+        "expo-status-bar",
+        {
+          "android": {
+            "backgroundColor": "#202020",
+            "barStyle": "light-content",
+            "translucent": false
+          }
+        }
+      ]
     ]
   }
 }

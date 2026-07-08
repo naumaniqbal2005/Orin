@@ -24,19 +24,18 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.mauveMagic,
+        tabBarActiveTintColor: Colors.iconColourFocused,
         tabBarInactiveTintColor: Colors.iconColour,
         tabBarStyle: {
           backgroundColor: Colors.cardBackground,
           borderTopColor: Colors.cardBorder,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 70,
+          paddingBottom: 10,
+          paddingTop: 15,
         },
         tabBarLabelStyle: {
-          fontFamily: 'Poppins-Medium',
-          fontSize: 12,
+          display: 'none',
         },
       }}
     >
