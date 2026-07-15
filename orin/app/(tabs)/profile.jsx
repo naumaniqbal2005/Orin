@@ -1,10 +1,8 @@
-import { StyleSheet, Pressable, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, ScrollView, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
-import Spacer from '../../components/Spacer';
 import { useAuth } from '../../context/AuthContext';
 import { User, Settings, Bell, Award, LogOut, ChevronRight } from 'lucide-react-native';
 import { Colors } from '../../constants/color';
@@ -19,7 +17,7 @@ export default function Profile() {
   };
 
   const menuItems = [
-    { icon: Settings, label: 'Settings', onPress: () => {} },
+    { icon: Settings, label: 'Settings', onPress: () => router.push('/settings') },
     { icon: Bell, label: 'Notifications', onPress: () => {} },
     { icon: Award, label: 'Achievements', onPress: () => {} },
   ];
@@ -33,7 +31,9 @@ export default function Profile() {
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.headerContainer}>
             <User size={28} color={Colors.iconColour} strokeWidth={2} />
-            <ThemedText title style={styles.header}>Profile</ThemedText>
+            <ThemedText title style={styles.header}>
+              Profile
+            </ThemedText>
           </View>
 
           <View style={styles.profileCard}>
@@ -42,7 +42,9 @@ export default function Profile() {
                 <User size={40} color={Colors.iconColour} strokeWidth={1.5} />
               </View>
             </View>
-            <ThemedText title style={styles.userName}>{user?.name ?? 'User'}</ThemedText>
+            <ThemedText title style={styles.userName}>
+              {user?.name ?? 'User'}
+            </ThemedText>
             <ThemedText style={styles.userEmail}>{user?.email}</ThemedText>
           </View>
 
@@ -50,7 +52,10 @@ export default function Profile() {
             {menuItems.map((item, index) => (
               <TouchableOpacity
                 key={index}
-                style={styles.menuItem}
+                style={[
+                  styles.menuItem,
+                  index === menuItems.length - 1 && styles.menuItemLast,
+                ]}
                 onPress={item.onPress}
               >
                 <View style={styles.menuIconContainer}>
@@ -150,6 +155,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.cardBorder,
+  },
+  menuItemLast: {
+    borderBottomWidth: 0,
   },
   menuIconContainer: {
     width: 40,

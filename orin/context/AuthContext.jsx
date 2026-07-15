@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { authService } from '../lib/auth';
+import { userService } from '../lib/user';
 
 const AuthContext = createContext(null);
 
@@ -20,7 +21,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     refreshUser();
-  }, [refreshUser]);
+  }, []);
 
   const login = useCallback(async (email, password) => {
     await authService.login(email, password);
@@ -31,6 +32,8 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (email, password, name) => {
     const newUser = await authService.register(email, password, name);
+    await userService.create();
+    console.log('newUser', newUser);
     setUser(newUser);
     return newUser;
   }, []);

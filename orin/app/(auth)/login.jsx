@@ -23,7 +23,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      router.replace('/activity');
+      router.replace('/timeline');
     } catch (error) {
       Alert.alert('Login failed', error.message ?? 'Could not sign in.');
     } finally {

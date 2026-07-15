@@ -29,7 +29,7 @@ export default function Register() {
     setSubmitting(true);
     try {
       await register(email.trim(), password, name.trim());
-      router.replace('/activity');
+      router.replace('/timeline');
     } catch (error) {
       Alert.alert('Registration failed', error.message ?? 'Could not create account.');
     } finally {

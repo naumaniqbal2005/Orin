@@ -15,7 +15,7 @@ export default function AuthLayout() {
   }
 
   if (user) {
-    return <Redirect href="/activity" />;
+    return <Redirect href="/timeline" />;
   }
 
   return (
