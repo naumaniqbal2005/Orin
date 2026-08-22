@@ -1,4 +1,12 @@
-import { StyleSheet, Pressable, Text, View, TextInput, ActivityIndicator, Alert } from 'react-native';
+import {
+  StyleSheet,
+  Pressable,
+  Text,
+  View,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { useState } from 'react';
 import { Link, useRouter } from 'expo-router';
 import ThemedView from '../../components/ThemedView';

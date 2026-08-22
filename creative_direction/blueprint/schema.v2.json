@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 2,
+  "schemaRevision": "2.0.0-final",
+  "manifestKind": "orin-appwrite-schema",
+  "status": "final",
+  "database": { "selection": "existing", "id": "6a4bead3002f1426a8ee", "name": "orin-database-dev", "create": false, "enabled": true },
+  "auth": {
+    "mode": "guest_then_email_password",
+    "stableOwnerId": "appwrite_account_id",
+    "handle": { "private": true, "unique": false, "loginIdentifier": false, "minLength": 3, "maxLength": 32 },
+    "guestSession": "account.createAnonymousSession()",
+    "upgradeInPlace": "account.updateEmail({ email, password })",
+    "verificationRequiredForAppUse": false,
+    "verificationRequiredForRecoveryAndCrossDeviceAssurance": true,
+    "emailConflictPolicy": "preserve_guest_session_and_data"
+  },
+  "security": {
+    "hostingPlan": "appwrite_cloud_free",
+    "encryptedColumnsAvailable": false,
+    "privateTableRule": "row_security_on",
+    "directClientTablePermissions": ["create(\"users\")"],
+    "functionOwnedTablePermissions": [],
+    "defaultOwnerRowPermissions": ["read(\"user:{ownerId}\")", "update(\"user:{ownerId}\")", "delete(\"user:{ownerId}\")"],
+    "notes": [
+      "No private table grants table-wide read, update, or delete.",
+      "Direct client creates attach permissions for the current Appwrite account ID.",
+      "Functions derive the account ID from authenticated execution and never trust a submitted userId.",
+      "Function-created rows receive only the owner permissions declared by their table."
+    ]
+  },
+  "tables": [
+    {
+      "id": "profiles", "name": "Profiles", "rowId": "accountId", "writer": "function", "rowSecurity": true, "permissions": [], "ownerRowPermissions": ["read", "update"],
+      "columns": [
+        { "key": "handle", "type": "varchar", "size": 32, "required": true, "array": false, "default": null, "rules": { "minLength": 3, "private": true, "unique": false } },
+        { "key": "timeZone", "type": "varchar", "size": 64, "required": true, "array": false, "default": null },
+        { "key": "locale", "type": "varchar", "size": 16, "required": false, "array": false, "default": "en" },
+        { "key": "wakeMinute", "type": "integer", "required": false, "array": false, "default": 420, "min": 0, "max": 1439 },
+        { "key": "sleepMinute", "type": "integer", "required": false, "array": false, "default": 1380, "min": 0, "max": 1439 },
+        { "key": "weekStartsOn", "type": "integer", "required": false, "array": false, "default": 1, "min": 0, "max": 6 },
+        { "key": "activePresetId", "type": "varchar", "size": 36, "required": false, "array": false, "default": null, "rules": { "references": "presets", "onDelete": "setNullByService" } },
+        { "key": "onboardingVersion", "type": "integer", "required": false, "array": false, "default": 0, "min": 0 }
+      ], "indexes": []
+    },
+    {
+      "id": "activities", "name": "Activities", "writer": "client", "rowSecurity": true, "permissions": ["create(\"users\")"], "ownerRowPermissions": ["read", "update", "delete"],
+      "columns": [
+        { "key": "userId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "name", "type": "varchar", "size": 120, "required": true, "array": false, "default": null },
+        { "key": "description", "type": "text", "required": false, "array": false, "default": null },
+        { "key": "category", "type": "varchar", "size": 40, "required": false, "array": false, "default": "other" },
+        { "key": "iconKey", "type": "varchar", "size": 40, "required": false, "array": false, "default": "circle" },
+        { "key": "colorToken", "type": "varchar", "size": 32, "required": false, "array": false, "default": "mint" },
+        { "key": "defaultDurationMin", "type": "integer", "required": false, "array": false, "default": 30, "min": 1, "max": 720 },
+        { "key": "startCue", "type": "varchar", "size": 240, "required": false, "array": false, "default": null },
+        { "key": "archivedAt", "type": "datetime", "required": false, "array": false, "default": null }
+      ],
+      "indexes": [{ "key": "activities_owner_archive_name_idx", "type": "key", "columns": ["userId", "archivedAt", "name"], "orders": ["ASC", "ASC", "ASC"] }]
+    },
+    {
+      "id": "presets", "name": "Presets", "writer": "client", "rowSecurity": true, "permissions": ["create(\"users\")"], "ownerRowPermissions": ["read", "update", "delete"],
+      "columns": [
+        { "key": "userId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "name", "type": "varchar", "size": 120, "required": true, "array": false, "default": null },
+        { "key": "description", "type": "text", "required": false, "array": false, "default": null },
+        { "key": "colorToken", "type": "varchar", "size": 32, "required": false, "array": false, "default": "mint" },
+        { "key": "revision", "type": "integer", "required": false, "array": false, "default": 1, "min": 1 },
+        { "key": "archivedAt", "type": "datetime", "required": false, "array": false, "default": null }
+      ],
+      "indexes": [{ "key": "presets_owner_archive_name_idx", "type": "key", "columns": ["userId", "archivedAt", "name"], "orders": ["ASC", "ASC", "ASC"] }]
+    },
+    {
+      "id": "preset_slots", "name": "Preset slots", "writer": "client", "rowSecurity": true, "permissions": ["create(\"users\")"], "ownerRowPermissions": ["read", "update", "delete"],
+      "columns": [
+        { "key": "userId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "presetId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null, "rules": { "references": "presets", "onDelete": "cascadeByService" } },
+        { "key": "activityId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null, "rules": { "references": "activities", "onDelete": "restrictByService" } },
+        { "key": "weekday", "type": "integer", "required": true, "array": false, "default": null, "min": 0, "max": 6 },
+        { "key": "startMinute", "type": "integer", "required": true, "array": false, "default": null, "min": 0, "max": 1439 },
+        { "key": "durationMin", "type": "integer", "required": true, "array": false, "default": null, "min": 1, "max": 720 },
+        { "key": "flexibility", "type": "enum", "elements": ["fixed", "window"], "required": false, "array": false, "default": "fixed" },
+        { "key": "windowStartMinute", "type": "integer", "required": false, "array": false, "default": null, "min": 0, "max": 1439 },
+        { "key": "windowEndMinute", "type": "integer", "required": false, "array": false, "default": null, "min": 0, "max": 1439 },
+        { "key": "position", "type": "integer", "required": true, "array": false, "default": null, "min": 0 }
+      ],
+      "indexes": [
+        { "key": "preset_slots_preset_day_position_uq", "type": "unique", "columns": ["presetId", "weekday", "position"], "orders": ["ASC", "ASC", "ASC"] },
+        { "key": "preset_slots_preset_day_start_idx", "type": "key", "columns": ["presetId", "weekday", "startMinute"], "orders": ["ASC", "ASC", "ASC"] }
+      ]
+    },
+    {
+      "id": "schedule_applications", "name": "Schedule applications", "writer": "function", "rowSecurity": true, "permissions": [], "ownerRowPermissions": ["read"],
+      "columns": [
+        { "key": "userId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "presetId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "targetWeekStart", "type": "varchar", "size": 10, "required": true, "array": false, "default": null, "rules": { "format": "YYYY-MM-DD" } },
+        { "key": "presetRevision", "type": "integer", "required": true, "array": false, "default": null, "min": 1 },
+        { "key": "strategy", "type": "enum", "elements": ["merge", "replace", "remaining"], "required": true, "array": false, "default": null },
+        { "key": "requestId", "type": "varchar", "size": 64, "required": true, "array": false, "default": null },
+        { "key": "status", "type": "enum", "elements": ["staged", "committed", "failed"], "required": true, "array": false, "default": null },
+        { "key": "createdAt", "type": "datetime", "required": true, "array": false, "default": null }
+      ],
+      "indexes": [
+        { "key": "applications_owner_request_uq", "type": "unique", "columns": ["userId", "requestId"], "orders": ["ASC", "ASC"] },
+        { "key": "applications_owner_week_idx", "type": "key", "columns": ["userId", "targetWeekStart"], "orders": ["ASC", "ASC"] }
+      ]
+    },
+    {
+      "id": "schedule_slots", "name": "Schedule slots", "writer": "function", "rowSecurity": true, "permissions": [], "ownerRowPermissions": ["read", "update"],
+      "columns": [
+        { "key": "userId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "localDate", "type": "varchar", "size": 10, "required": true, "array": false, "default": null, "rules": { "format": "YYYY-MM-DD" } },
+        { "key": "timeZone", "type": "varchar", "size": 64, "required": true, "array": false, "default": null },
+        { "key": "startsAt", "type": "datetime", "required": true, "array": false, "default": null },
+        { "key": "endsAt", "type": "datetime", "required": true, "array": false, "default": null },
+        { "key": "startMinute", "type": "integer", "required": true, "array": false, "default": null, "min": 0, "max": 1439 },
+        { "key": "durationMin", "type": "integer", "required": true, "array": false, "default": null, "min": 1, "max": 1440 },
+        { "key": "activityId", "type": "varchar", "size": 36, "required": false, "array": false, "default": null, "rules": { "references": "activities", "onDelete": "setNullByService" } },
+        { "key": "activityNameSnapshot", "type": "varchar", "size": 120, "required": true, "array": false, "default": null },
+        { "key": "categorySnapshot", "type": "varchar", "size": 40, "required": true, "array": false, "default": null },
+        { "key": "iconKeySnapshot", "type": "varchar", "size": 40, "required": true, "array": false, "default": null },
+        { "key": "colorTokenSnapshot", "type": "varchar", "size": 32, "required": true, "array": false, "default": null },
+        { "key": "sourcePresetId", "type": "varchar", "size": 36, "required": false, "array": false, "default": null },
+        { "key": "sourcePresetSlotId", "type": "varchar", "size": 36, "required": false, "array": false, "default": null },
+        { "key": "applicationId", "type": "varchar", "size": 36, "required": false, "array": false, "default": null },
+        { "key": "materializationKey", "type": "varchar", "size": 160, "required": true, "array": false, "default": null },
+        { "key": "rootSlotId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "supersedesSlotId", "type": "varchar", "size": 36, "required": false, "array": false, "default": null },
+        { "key": "moveSequence", "type": "integer", "required": false, "array": false, "default": 0, "min": 0 },
+        { "key": "status", "type": "enum", "elements": ["planned", "completed", "partial", "moved", "missed", "intentionally_skipped", "canceled"], "required": false, "array": false, "default": "planned" },
+        { "key": "revision", "type": "integer", "required": false, "array": false, "default": 1, "min": 1 },
+        { "key": "clientMutationId", "type": "varchar", "size": 64, "required": true, "array": false, "default": null }
+      ],
+      "indexes": [
+        { "key": "schedule_owner_materialization_uq", "type": "unique", "columns": ["userId", "materializationKey"], "orders": ["ASC", "ASC"] },
+        { "key": "schedule_owner_mutation_uq", "type": "unique", "columns": ["userId", "clientMutationId"], "orders": ["ASC", "ASC"] },
+        { "key": "schedule_owner_date_start_idx", "type": "key", "columns": ["userId", "localDate", "startMinute"], "orders": ["ASC", "ASC", "ASC"] },
+        { "key": "schedule_owner_status_date_idx", "type": "key", "columns": ["userId", "status", "localDate"], "orders": ["ASC", "ASC", "ASC"] },
+        { "key": "schedule_root_move_uq", "type": "unique", "columns": ["rootSlotId", "moveSequence"], "orders": ["ASC", "ASC"] }
+      ]
+    },
+    {
+      "id": "checkins", "name": "Check-ins", "writer": "function", "rowSecurity": true, "permissions": [], "ownerRowPermissions": ["read", "update", "delete"],
+      "columns": [
+        { "key": "userId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "scheduleSlotId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null, "rules": { "references": "schedule_slots", "onDelete": "restrictByService" } },
+        { "key": "outcome", "type": "enum", "elements": ["completed", "partial", "missed", "intentionally_skipped"], "required": true, "array": false, "default": null },
+        { "key": "actualDurationMin", "type": "integer", "required": false, "array": false, "default": null, "min": 0, "max": 1440 },
+        { "key": "reasonCodes", "type": "varchar", "size": 40, "required": false, "array": true, "default": null, "rules": { "maxItems": 5 } },
+        { "key": "note", "type": "text", "required": false, "array": false, "default": null },
+        { "key": "occurredAt", "type": "datetime", "required": true, "array": false, "default": null },
+        { "key": "clientMutationId", "type": "varchar", "size": 64, "required": true, "array": false, "default": null }
+      ],
+      "indexes": [
+        { "key": "checkins_owner_slot_uq", "type": "unique", "columns": ["userId", "scheduleSlotId"], "orders": ["ASC", "ASC"] },
+        { "key": "checkins_owner_mutation_uq", "type": "unique", "columns": ["userId", "clientMutationId"], "orders": ["ASC", "ASC"] },
+        { "key": "checkins_owner_time_idx", "type": "key", "columns": ["userId", "occurredAt"], "orders": ["ASC", "ASC"] }
+      ]
+    },
+    {
+      "id": "daily_reflections", "name": "Daily reflections", "writer": "function", "rowSecurity": true, "permissions": [], "ownerRowPermissions": ["read", "update", "delete"],
+      "columns": [
+        { "key": "userId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "localDate", "type": "varchar", "size": 10, "required": true, "array": false, "default": null, "rules": { "format": "YYYY-MM-DD" } },
+        { "key": "noteForTomorrow", "type": "text", "required": false, "array": false, "default": null },
+        { "key": "completedAt", "type": "datetime", "required": true, "array": false, "default": null },
+        { "key": "clientMutationId", "type": "varchar", "size": 64, "required": true, "array": false, "default": null }
+      ],
+      "indexes": [
+        { "key": "reflections_owner_date_uq", "type": "unique", "columns": ["userId", "localDate"], "orders": ["ASC", "ASC"] },
+        { "key": "reflections_owner_mutation_uq", "type": "unique", "columns": ["userId", "clientMutationId"], "orders": ["ASC", "ASC"] }
+      ]
+    },
+    {
+      "id": "notification_preferences", "name": "Notification preferences", "rowId": "accountId", "writer": "function", "rowSecurity": true, "permissions": [], "ownerRowPermissions": ["read", "update"],
+      "columns": [
+        { "key": "activityStartsEnabled", "type": "boolean", "required": false, "array": false, "default": false },
+        { "key": "nightlyEnabled", "type": "boolean", "required": false, "array": false, "default": false },
+        { "key": "weeklyEnabled", "type": "boolean", "required": false, "array": false, "default": false },
+        { "key": "quietStartMinute", "type": "integer", "required": false, "array": false, "default": 1320, "min": 0, "max": 1439 },
+        { "key": "quietEndMinute", "type": "integer", "required": false, "array": false, "default": 420, "min": 0, "max": 1439 },
+        { "key": "privacyMode", "type": "enum", "elements": ["generic", "title"], "required": false, "array": false, "default": "generic" },
+        { "key": "hapticsEnabled", "type": "boolean", "required": false, "array": false, "default": true }
+      ], "indexes": []
+    },
+    {
+      "id": "weekly_reports", "name": "Weekly reports", "writer": "function", "rowSecurity": true, "permissions": [], "ownerRowPermissions": ["read"],
+      "columns": [
+        { "key": "userId", "type": "varchar", "size": 36, "required": true, "array": false, "default": null },
+        { "key": "weekStartLocalDate", "type": "varchar", "size": 10, "required": true, "array": false, "default": null, "rules": { "format": "YYYY-MM-DD" } },
+        { "key": "generatedAt", "type": "datetime", "required": true, "array": false, "default": null },
+        { "key": "dataVersion", "type": "integer", "required": true, "array": false, "default": null, "min": 1 },
+        { "key": "summary", "type": "text", "required": true, "array": false, "default": null },
+        { "key": "metricsJson", "type": "text", "required": true, "array": false, "default": null, "rules": { "schema": "versioned-report-metrics" } }
+      ],
+      "indexes": [{ "key": "reports_owner_week_uq", "type": "unique", "columns": ["userId", "weekStartLocalDate"], "orders": ["ASC", "ASC"] }]
+    }
+  ],
+  "deferred": [
+    "proof_files and a private Storage bucket after the core loop is dependable",
+    "achievements only if persisted unlock state becomes necessary",
+    "notification delivery ledger remains local in V1",
+    "account merging requires a separate security design"
+  ],
+  "provisioningNotes": [
+    "Reuse the existing database ID; never create a second database from this manifest.",
+    "The renderer validates this contract before changing appwrite.config.json.",
+    "Rendering and Appwrite push are separate commands; the renderer never contacts Appwrite.",
+    "The current remote database was reset, so all ten tables may be created from an empty state.",
+    "Owner row grants are attached when rows are created; no real user IDs belong in this manifest.",
+    "Appwrite Cloud Free does not support encrypted columns; sensitive text relies on TLS plus strict row permissions until a reviewed client-side encryption or plan-upgrade decision."
+  ]
+}

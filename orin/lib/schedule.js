@@ -1,4 +1,4 @@
-import { ID, Query } from 'react-native-appwrite';
+import { ID, Query } from 'appwrite';
 import { tablesDB, DATABASE_ID } from './appwrite';
 import { getCurrentUserId, userDocumentPermissions } from './auth';
 
@@ -13,7 +13,7 @@ export const scheduleService = {
         tableId: TABLE_ID,
         rowId: ID.unique(),
         data: { ...slot, userId },
-        permissions: userDocumentPermissions(userId)
+        permissions: userDocumentPermissions(userId),
       });
     } catch (error) {
       console.error('Error creating schedule slot:', error);
@@ -31,7 +31,7 @@ export const scheduleService = {
       return await tablesDB.listRows({
         databaseId: DATABASE_ID,
         tableId: TABLE_ID,
-        queries: queries
+        queries: queries,
       });
     } catch (error) {
       console.error('Error listing schedule slots:', error);
@@ -44,7 +44,7 @@ export const scheduleService = {
       return await tablesDB.getRow({
         databaseId: DATABASE_ID,
         tableId: TABLE_ID,
-        rowId: id
+        rowId: id,
       });
     } catch (error) {
       console.error('Error getting schedule slot:', error);
@@ -58,7 +58,7 @@ export const scheduleService = {
         databaseId: DATABASE_ID,
         tableId: TABLE_ID,
         rowId: id,
-        data: data
+        data: data,
       });
     } catch (error) {
       console.error('Error updating schedule slot:', error);
@@ -71,7 +71,7 @@ export const scheduleService = {
       return await tablesDB.deleteRow({
         databaseId: DATABASE_ID,
         tableId: TABLE_ID,
-        rowId: id
+        rowId: id,
       });
     } catch (error) {
       console.error('Error deleting schedule slot:', error);
@@ -89,7 +89,7 @@ export const scheduleService = {
           Query.equal('userId', userId),
           Query.greaterThanEqual('date', startDate),
           Query.lessThanEqual('date', endDate),
-        ]
+        ],
       });
     } catch (error) {
       console.error('Error getting week schedule:', error);

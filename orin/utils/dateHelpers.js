@@ -23,13 +23,13 @@ export const getEndOfWeek = (date = new Date()) => {
 export const getWeekDates = (date = new Date()) => {
   const start = new Date(getStartOfWeek(date));
   const weekDates = [];
-  
+
   for (let i = 0; i < 7; i++) {
     const current = new Date(start);
     current.setDate(current.getDate() + i);
     weekDates.push(formatDate(current));
   }
-  
+
   return weekDates;
 };
 

@@ -1,33 +1,17 @@
-import { ID, Permission, Role } from 'react-native-appwrite';
+import { Permission, Role } from 'react-native-appwrite';
 import { account } from './appwrite';
+import { createAuthService } from './authCore';
+
+const accountAuth = createAuthService(account);
 
 export const authService = {
+  ...accountAuth,
+
   async register(email, password, name) {
-    const user = await account.create({userId: ID.unique(), email, password, name});
-    await account.createEmailPasswordSession({email, password});
+    await accountAuth.ensureGuestSession();
+    const { user } = await accountAuth.upgradeGuestAccount({ email, password });
+    if (name?.trim()) await account.updateName({ name: name.trim() });
     return user;
-  },
-
-  async login(email, password) {
-    try {
-      await account.createEmailPasswordSession({email, password});
-    }
-    catch{
-      console.log("Error:", error);
-    }
-  },
-
-  async logout() {
-    try{
-      await account.deleteSession({ sessionId: 'current' });
-      console.log('You are logged out!')
-    } catch (error) {
-      console.log("Error:", error);
-    }
-  },
-
-  async getCurrentUser() {
-    return account.get();
   },
 };
 
@@ -43,4 +27,3 @@ export function userDocumentPermissions(userId) {
     Permission.delete(Role.user(userId)),
   ];
 }
-

@@ -1,6 +1,5 @@
 import { View, StyleSheet } from 'react-native';
 import React from 'react';
-import ThemedView from './ThemedView';
 import ThemedText from './ThemedText';
 import { Colors } from '../constants/color';
 
@@ -34,9 +33,7 @@ export default function ActivityCard({ activity }) {
             {activity.name}
           </ThemedText>
         </View>
-        <ThemedText style={styles.activityDescription}>
-          {activity.description}
-        </ThemedText>
+        <ThemedText style={styles.activityDescription}>{activity.description}</ThemedText>
         <View style={styles.bottomRow}>
           <ThemedText style={styles.timeText}>
             {formatTime(activity.startTime)} - {formatTime(activity.endTime)}
@@ -87,6 +84,6 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 12,
     fontFamily: 'Poppins-Medium',
-    color: Colors.white
+    color: Colors.white,
   },
 });

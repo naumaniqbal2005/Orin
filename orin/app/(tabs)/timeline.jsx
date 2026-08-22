@@ -1,14 +1,22 @@
-import { View, ScrollView, StyleSheet, TouchableOpacity, Modal, ActivityIndicator, Alert } from 'react-native';
-import React, { useState, useEffect } from 'react';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ThemedView from '../../components/ThemedView';
 import DateHeader from '../../components/DateHeader';
-import ActivityCard from '../../components/ActivityCard';
 import ThemedText from '../../components/ThemedText';
 import { Calendar, Clock, Plus, X } from 'lucide-react-native';
 import { Colors } from '../../constants/color';
 import { presetsService } from '../../lib/presets';
+import { userService } from '../../lib/user';
+import { notificationService } from '../../lib/notifications';
 
 const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -19,9 +27,31 @@ export default function Timeline() {
   const [loadingPresets, setLoadingPresets] = useState(false);
   const [timelineData, setTimelineData] = useState(null); // { activities: [], timings: [] }
   const [selectedPreset, setSelectedPreset] = useState(null);
+  const scheduledNotificationIds = useRef([]);
 
   const getDayOfWeek = (date) => {
     return DAYS_OF_WEEK[date.getDay()];
+  };
+
+  const last_selected_preset = async () => {
+    const userRow = await userService.get();
+    const presetId = userRow.last_selected_preset;
+    if (!presetId) return null;
+
+    // Fetch the full preset object using the ID
+    const result = await presetsService.list();
+    const presets = result.rows || result.documents || [];
+    return presets.find((p) => p.$id === presetId) || null;
+  };
+
+  const update_user_preset = async (preset) => {
+    try {
+      await userService.update({
+        last_selected_preset: preset.$id,
+      });
+    } catch {
+      Alert.alert('Error', 'Failed to update last_selected_preset');
+    }
   };
 
   const loadPresets = async () => {
@@ -29,32 +59,54 @@ export default function Timeline() {
     try {
       const result = await presetsService.list();
       setPresets(result.rows || result.documents || []);
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to load presets');
     } finally {
       setLoadingPresets(false);
     }
   };
 
-  const handleLoadPreset = (preset) => {
+  const handleLoadPreset = async (preset) => {
+    // Cancel existing notifications
+    if (scheduledNotificationIds.current.length > 0) {
+      await notificationService.cancelNotifications(scheduledNotificationIds.current);
+      scheduledNotificationIds.current = [];
+    }
+
     setSelectedPreset(preset);
     const dayOfWeek = getDayOfWeek(selectedDate);
-    
+
     // Find the schedule for the selected day
     let daySchedule = null;
+    let activitiesForNotifications = [];
+    let timingsForNotifications = [];
+
     if (preset.daySlots && preset.daySlots.length > 0) {
       for (let i = 0; i < preset.daySlots.length; i++) {
         const days = preset.daySlots[i] || [];
         if (days.includes(dayOfWeek)) {
           daySchedule = {
             activities: preset.activities[i] || [],
-            timings: preset.timings[i] || []
+            timings: preset.timings[i] || [],
           };
+          activitiesForNotifications = preset.activities[i] || [];
+          timingsForNotifications = preset.timings[i] || [];
           break;
         }
       }
     }
 
+    // Schedule notifications for today's activities
+    if (activitiesForNotifications.length > 0) {
+      const notificationIds = await notificationService.scheduleDayNotifications(
+        activitiesForNotifications,
+        timingsForNotifications,
+        selectedDate,
+      );
+      scheduledNotificationIds.current = notificationIds;
+    }
+
+    await update_user_preset(preset);
     setTimelineData(daySchedule || { activities: [], timings: [] });
     setPresetModalVisible(false);
   };
@@ -87,7 +139,7 @@ export default function Timeline() {
       if (i > 0) {
         const prevItem = processed[processed.length - 1];
         const prevTiming = timings[i - 1] || {};
-        
+
         // If previous activity ends at the same time this one starts, merge them
         if (prevTiming.end_time === currentStart) {
           prevItem.activities.push(activities[i]);
@@ -101,14 +153,14 @@ export default function Timeline() {
         const prevTiming = timings[i - 1] || {};
         const prevEnd = parseTimeToMinutes(prevTiming.end_time);
         const currentStartMin = parseTimeToMinutes(currentStart);
-        
+
         if (currentStartMin > prevEnd) {
           // Add a break card
           processed.push({
             type: 'break',
             duration: currentStartMin - prevEnd,
             startTime: prevTiming.end_time,
-            endTime: currentStart
+            endTime: currentStart,
           });
         }
       }
@@ -117,35 +169,77 @@ export default function Timeline() {
         type: 'activity',
         activities: [activities[i]],
         startTiming: currentStart,
-        endTiming: currentEnd
+        endTiming: currentEnd,
       });
     }
 
     return processed;
   };
 
+  // Load last selected preset only once on mount
   useEffect(() => {
-    // Update timeline when date changes if a preset is selected
-    if (selectedPreset) {
-      const dayOfWeek = getDayOfWeek(selectedDate);
-      
-      // Find the schedule for the selected day
-      let daySchedule = null;
-      if (selectedPreset.daySlots && selectedPreset.daySlots.length > 0) {
-        for (let i = 0; i < selectedPreset.daySlots.length; i++) {
-          const days = selectedPreset.daySlots[i] || [];
-          if (days.includes(dayOfWeek)) {
-            daySchedule = {
-              activities: selectedPreset.activities[i] || [],
-              timings: selectedPreset.timings[i] || []
-            };
-            break;
-          }
+    const loadLastSelectedPreset = async () => {
+      try {
+        const preset = await last_selected_preset();
+        if (preset) {
+          setSelectedPreset(preset);
+        }
+      } catch {
+        // Silently handle error - no preset selected yet
+      }
+    };
+
+    loadLastSelectedPreset();
+  }, []);
+
+  // Update timeline when date changes (only if a preset is already selected)
+  useEffect(() => {
+    if (!selectedPreset) return;
+
+    const dayOfWeek = getDayOfWeek(selectedDate);
+
+    // Find the schedule for the selected day
+    let daySchedule = null;
+    let activitiesForNotifications = [];
+    let timingsForNotifications = [];
+
+    if (selectedPreset.daySlots && selectedPreset.daySlots.length > 0) {
+      for (let i = 0; i < selectedPreset.daySlots.length; i++) {
+        const days = selectedPreset.daySlots[i] || [];
+        if (days.includes(dayOfWeek)) {
+          daySchedule = {
+            activities: selectedPreset.activities[i] || [],
+            timings: selectedPreset.timings[i] || [],
+          };
+          activitiesForNotifications = selectedPreset.activities[i] || [];
+          timingsForNotifications = selectedPreset.timings[i] || [];
+          break;
         }
       }
-
-      setTimelineData(daySchedule || { activities: [], timings: [] });
     }
+
+    setTimelineData(daySchedule || { activities: [], timings: [] });
+
+    // Reschedule notifications for the new date
+    const rescheduleNotifications = async () => {
+      // Cancel existing notifications
+      if (scheduledNotificationIds.current.length > 0) {
+        await notificationService.cancelNotifications(scheduledNotificationIds.current);
+        scheduledNotificationIds.current = [];
+      }
+
+      // Schedule new notifications for the new date's activities
+      if (activitiesForNotifications.length > 0) {
+        const notificationIds = await notificationService.scheduleDayNotifications(
+          activitiesForNotifications,
+          timingsForNotifications,
+          selectedDate,
+        );
+        scheduledNotificationIds.current = notificationIds;
+      }
+    };
+
+    rescheduleNotifications();
   }, [selectedDate, selectedPreset]);
 
   return (
@@ -157,9 +251,11 @@ export default function Timeline() {
         <View style={styles.headerContainer}>
           <View style={styles.headerLeft}>
             <Calendar size={28} color={Colors.iconColour} strokeWidth={2} />
-            <ThemedText title style={styles.header}>Timeline</ThemedText>
+            <ThemedText title style={styles.header}>
+              Timeline
+            </ThemedText>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.addButton}
             onPress={() => {
               loadPresets();
@@ -185,56 +281,53 @@ export default function Timeline() {
             </View>
           ) : (
             <View style={styles.timelineContainer}>
-              {processTimelineData(timelineData.activities, timelineData.timings).map((item, index) => {
-                if (item.type === 'break') {
-                  const breakMinutes = item.duration;
-                  const hours = Math.floor(breakMinutes / 60);
-                  const mins = breakMinutes % 60;
-                  const durationText = hours > 0 
-                    ? `${hours}h ${mins}m break` 
-                    : `${mins}m break`;
+              {processTimelineData(timelineData.activities, timelineData.timings).map(
+                (item, index) => {
+                  if (item.type === 'break') {
+                    const breakMinutes = item.duration;
+                    const hours = Math.floor(breakMinutes / 60);
+                    const mins = breakMinutes % 60;
+                    const durationText = hours > 0 ? `${hours}h ${mins}m break` : `${mins}m break`;
+
+                    return (
+                      <View key={`break-${index}`} style={styles.breakItem}>
+                        <View style={styles.breakTimeColumn}>
+                          <View style={styles.breakConnector} />
+                        </View>
+                        <View style={styles.breakColumn}>
+                          <View style={styles.breakCard}>
+                            <ThemedText style={styles.breakText}>{durationText}</ThemedText>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  }
 
                   return (
-                    <View key={`break-${index}`} style={styles.breakItem}>
-                      <View style={styles.breakTimeColumn}>
-                        <View style={styles.breakConnector} />
+                    <View key={`activity-${index}`} style={styles.timelineItem}>
+                      <View style={styles.timeColumn}>
+                        <ThemedText style={styles.timeText}>
+                          {formatTimeDisplay(item.startTiming)}
+                        </ThemedText>
+                        <View style={styles.timeConnector} />
+                        <ThemedText style={styles.timeText}>
+                          {formatTimeDisplay(item.endTiming)}
+                        </ThemedText>
                       </View>
-                      <View style={styles.breakColumn}>
-                        <View style={styles.breakCard}>
-                          <ThemedText style={styles.breakText}>{durationText}</ThemedText>
-                        </View>
+                      <View style={styles.activityColumn}>
+                        {item.activities.map((activity, actIndex) => (
+                          <View
+                            key={actIndex}
+                            style={[styles.activityCard, actIndex > 0 && styles.activityCardNested]}
+                          >
+                            <ThemedText style={styles.activityName}>{activity}</ThemedText>
+                          </View>
+                        ))}
                       </View>
                     </View>
                   );
-                }
-
-                return (
-                  <View key={`activity-${index}`} style={styles.timelineItem}>
-                    <View style={styles.timeColumn}>
-                      <ThemedText style={styles.timeText}>
-                        {formatTimeDisplay(item.startTiming)}
-                      </ThemedText>
-                      <View style={styles.timeConnector} />
-                      <ThemedText style={styles.timeText}>
-                        {formatTimeDisplay(item.endTiming)}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.activityColumn}>
-                      {item.activities.map((activity, actIndex) => (
-                        <View 
-                          key={actIndex} 
-                          style={[
-                            styles.activityCard,
-                            actIndex > 0 && styles.activityCardNested
-                          ]}
-                        >
-                          <ThemedText style={styles.activityName}>{activity}</ThemedText>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                );
-              })}
+                },
+              )}
             </View>
           )}
         </ScrollView>
@@ -252,7 +345,9 @@ export default function Timeline() {
               style={styles.modalContent}
             >
               <View style={styles.modalHeader}>
-                <ThemedText title style={styles.modalTitle}>Select Preset</ThemedText>
+                <ThemedText title style={styles.modalTitle}>
+                  Select Preset
+                </ThemedText>
                 <TouchableOpacity
                   style={styles.closeModalBtn}
                   onPress={() => setPresetModalVisible(false)}

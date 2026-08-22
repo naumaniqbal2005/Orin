@@ -1,4 +1,4 @@
-import { ID, Query } from 'react-native-appwrite';
+import { ID, Query } from 'appwrite';
 import { tablesDB, DATABASE_ID } from './appwrite';
 import { getCurrentUserId, userDocumentPermissions } from './auth';
 
@@ -9,16 +9,16 @@ export const activitiesService = {
     try {
       const userId = await getCurrentUserId();
       return await tablesDB.createRow({
-        databaseId : DATABASE_ID,
-        tableId : TABLE_ID,
-        rowId : ID.unique(),
-        data : {
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        rowId: ID.unique(),
+        data: {
           userId,
           name: activity.name,
           description: activity.description ?? '',
         },
-        permissions : userDocumentPermissions(userId)
-      })
+        permissions: userDocumentPermissions(userId),
+      });
     } catch (error) {
       console.error('Error creating activity:', error);
       throw error;
@@ -29,11 +29,9 @@ export const activitiesService = {
     try {
       console.log('Listing activities with DATABASE_ID:', DATABASE_ID, 'TABLE_ID:', TABLE_ID);
       const result = await tablesDB.listRows({
-        databaseId : DATABASE_ID,
-        tableId : TABLE_ID,
-        queries : [
-          Query.equal('userId', await getCurrentUserId())
-        ]
+        databaseId: DATABASE_ID,
+        tableId: TABLE_ID,
+        queries: [Query.equal('userId', await getCurrentUserId())],
       });
       console.log('List result:', result);
       return result;
@@ -49,7 +47,7 @@ export const activitiesService = {
       return await tablesDB.getRow({
         databaseId: DATABASE_ID,
         tableId: TABLE_ID,
-        rowId: id
+        rowId: id,
       });
     } catch (error) {
       console.error('Error getting activity:', error);
@@ -63,7 +61,7 @@ export const activitiesService = {
         databaseId: DATABASE_ID,
         tableId: TABLE_ID,
         rowId: id,
-        data: data
+        data: data,
       });
     } catch (error) {
       console.error('Error updating activity:', error);
@@ -76,7 +74,7 @@ export const activitiesService = {
       return await tablesDB.deleteRow({
         databaseId: DATABASE_ID,
         tableId: TABLE_ID,
-        rowId: id
+        rowId: id,
       });
     } catch (error) {
       console.error('Error deleting activity:', error);

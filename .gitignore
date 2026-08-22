@@ -1,0 +1,42 @@
+# Dependencies and generated output
+**/node_modules/
+**/.expo/
+**/.eas/
+**/dist/
+**/web-build/
+**/coverage/
+**/.cache/
+
+# Local environment and secret overrides
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+**/.secrets/
+**/secrets/
+**/credentials/
+**/credentials.json
+**/*service-account*.json
+**/appwrite.local.json
+**/appwrite.secrets.json
+**/.appwrite/
+
+# Mobile signing and provider credentials
+**/*.pem
+**/*.key
+**/*.p8
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/*.mobileprovision
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Logs and operating-system files
+**/*.log
+**/npm-debug.*
+**/yarn-debug.*
+**/yarn-error.*
+**/.DS_Store
+**/Thumbs.db

@@ -52,10 +52,7 @@ export default function Profile() {
             {menuItems.map((item, index) => (
               <TouchableOpacity
                 key={index}
-                style={[
-                  styles.menuItem,
-                  index === menuItems.length - 1 && styles.menuItemLast,
-                ]}
+                style={[styles.menuItem, index === menuItems.length - 1 && styles.menuItemLast]}
                 onPress={item.onPress}
               >
                 <View style={styles.menuIconContainer}>

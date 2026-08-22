@@ -37,14 +37,14 @@ export const userService = {
     }
   },
 
-  async update({ wakeup_time, sleep_time }) {
+  async update(data) {
     try {
       const userId = await getCurrentUserId();
       return await tablesDB.updateRow({
         databaseId: DATABASE_ID,
         tableId: TABLE_ID,
         rowId: userId,
-        data: { wakeup_time, sleep_time },
+        data: { ...data },
       });
     } catch (error) {
       console.error('Error updating user:', error);

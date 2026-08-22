@@ -1,4 +1,4 @@
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { Colors } from '../constants/color';
@@ -17,9 +17,7 @@ const RootLayout = () => {
   useEffect(() => {
     client
       .ping()
-      .then(() => {
-        console.log('Appwrite is ready');
-      })
+      .then(() => {})
       .catch((error) => {
         console.error('Appwrite is not ready', error);
       });

@@ -28,12 +28,12 @@ export const Colors = {
   iconColourFocused: '#D8BFD8',
   glassBackground: 'rgba(255, 255, 255, 0.4)',
   glassBorder: 'rgba(200, 162, 200, 0.2)',
-  
+
   // Accent colors
   accent: '#F4C2C2',
   accentSecondary: '#AFEEEE',
-  
+
   // Gradient colors
   gradientStart: '#D8BFD8',
   gradientEnd: '#E6E6FA',
-}
+};

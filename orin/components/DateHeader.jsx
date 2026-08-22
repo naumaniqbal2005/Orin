@@ -1,8 +1,7 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import React, { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react-native';
-import ThemedView from './ThemedView';
 import ThemedText from './ThemedText';
 import { Colors } from '../constants/color';
 
@@ -62,20 +61,30 @@ export default function DateHeader({ selectedDate, onDateChange }) {
   const month = selectedDate.getMonth();
   const calendarDays = generateCalendarDays(year, month);
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        onPress={() => setShowCalendar(!showCalendar)}
-        style={styles.dateButton}
-      >
+      <TouchableOpacity onPress={() => setShowCalendar(!showCalendar)} style={styles.dateButton}>
         <CalendarIcon size={20} color={Colors.iconColour} strokeWidth={1.5} />
         <ThemedText style={styles.dateText} title>
           {formatDate(selectedDate)}
         </ThemedText>
       </TouchableOpacity>
-      
+
       {showCalendar && (
         <View style={styles.calendarContainer}>
           <LinearGradient
@@ -109,16 +118,18 @@ export default function DateHeader({ selectedDate, onDateChange }) {
                   style={[
                     styles.dayCell,
                     day === selectedDate.getDate() && styles.selectedDayCell,
-                    !day && styles.emptyDayCell
+                    !day && styles.emptyDayCell,
                   ]}
                   onPress={() => day && handleDayPress(day)}
                   disabled={!day}
                 >
                   {day && (
-                    <ThemedText style={[
-                      styles.dayText,
-                      day === selectedDate.getDate() && styles.selectedDayText
-                    ]}>
+                    <ThemedText
+                      style={[
+                        styles.dayText,
+                        day === selectedDate.getDate() && styles.selectedDayText,
+                      ]}
+                    >
                       {day}
                     </ThemedText>
                   )}
@@ -127,10 +138,7 @@ export default function DateHeader({ selectedDate, onDateChange }) {
             </View>
           </ScrollView>
 
-          <TouchableOpacity 
-            style={styles.closeButton}
-            onPress={() => setShowCalendar(false)}
-          >
+          <TouchableOpacity style={styles.closeButton} onPress={() => setShowCalendar(false)}>
             <ThemedText style={styles.closeButtonText}>Close</ThemedText>
           </TouchableOpacity>
         </View>

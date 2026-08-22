@@ -7,12 +7,11 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
 } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import {
   LayoutGrid,
@@ -26,31 +25,23 @@ import {
   Calendar,
   Sparkles,
   Copy,
-  Check
+  Check,
 } from 'lucide-react-native';
 import { Colors } from '../../constants/color';
 import { presetsService } from '../../lib/presets';
 import { activitiesService } from '../../lib/activities';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-const DAYS_OF_WEEK = [
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday'
-];
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const DAYS_SHORT = {
-  'Monday': 'Mon',
-  'Tuesday': 'Tue',
-  'Wednesday': 'Wed',
-  'Thursday': 'Thu',
-  'Friday': 'Fri',
-  'Saturday': 'Sat',
-  'Sunday': 'Sun'
+  Monday: 'Mon',
+  Tuesday: 'Tue',
+  Wednesday: 'Wed',
+  Thursday: 'Thu',
+  Friday: 'Fri',
+  Saturday: 'Sat',
+  Sunday: 'Sun',
 };
 
 const DEFAULT_ACTIVITIES = [
@@ -61,7 +52,7 @@ const DEFAULT_ACTIVITIES = [
   { $id: 'default_5', name: 'Yoga', description: 'Stretching or mindfulness' },
   { $id: 'default_6', name: 'Reading', description: 'Books, articles, or learning' },
   { $id: 'default_7', name: 'Dinner', description: 'Evening meal and relaxation' },
-  { $id: 'default_8', name: 'Sleep', description: 'Night rest or wind down' }
+  { $id: 'default_8', name: 'Sleep', description: 'Night rest or wind down' },
 ];
 
 function createTimeDate(hours, minutes) {
@@ -89,6 +80,22 @@ function formatTimeDisplay(timeStr) {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+let localSlotSequence = 0;
+
+function nextLocalSlotId(prefix = 'slot') {
+  localSlotSequence += 1;
+  return `${prefix}_${localSlotSequence}`;
+}
+
+function createEmptySlot() {
+  return {
+    id: nextLocalSlotId(),
+    activityName: '',
+    start_time: '08:00',
+    end_time: '09:00',
+  };
+}
+
 export default function Presets() {
   /* const [presets, setPresets] = useState([
      { id: 1, name: 'Morning Routine', icon: 'sun', activities: 5 },
@@ -109,17 +116,17 @@ export default function Presets() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingPresetId, setEditingPresetId] = useState(null); // null if creating
   const [presetName, setPresetName] = useState('');
-  
+
   // Day-by-Day schedule state
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [weeklySchedule, setWeeklySchedule] = useState({
-    'Monday': [],
-    'Tuesday': [],
-    'Wednesday': [],
-    'Thursday': [],
-    'Friday': [],
-    'Saturday': [],
-    'Sunday': []
+    Monday: [],
+    Tuesday: [],
+    Wednesday: [],
+    Thursday: [],
+    Friday: [],
+    Saturday: [],
+    Sunday: [],
   });
 
   // Time & Activity Picker state
@@ -131,31 +138,24 @@ export default function Presets() {
   const [copyModalVisible, setCopyModalVisible] = useState(false);
   const [copyTargetDays, setCopyTargetDays] = useState([]);
 
-  useEffect(() => {
-    loadPresets();
-    loadActivities();
-  }, []);
-
-  const loadPresets = async () => {
+  const loadPresets = useCallback(async () => {
     try {
       const results = await presetsService.list();
       setPresets(results.rows || results.documents || []);
-    } catch (error) {
-      Alert.alert(
-        'Error',
-        'Failed to load presets. Please check your connection.',
-        [{ text: 'OK' }]
-      );
+    } catch {
+      Alert.alert('Error', 'Failed to load presets. Please check your connection.', [
+        { text: 'OK' },
+      ]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async () => {
     try {
       const result = await activitiesService.list();
-      
+
       let list = [];
       if (Array.isArray(result)) {
         list = result;
@@ -164,12 +164,17 @@ export default function Presets() {
       } else if (result && Array.isArray(result.documents)) {
         list = result.documents;
       }
-      
+
       setAvailableActivities(list);
-    } catch (error) {
+    } catch {
       setAvailableActivities([]); // Ensure empty array on error
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadPresets();
+    loadActivities();
+  }, [loadActivities, loadPresets]);
 
   const getActivitiesList = () => {
     return availableActivities.length > 0 ? availableActivities : DEFAULT_ACTIVITIES;
@@ -179,25 +184,18 @@ export default function Presets() {
     setRefreshing(true);
     loadPresets();
     loadActivities();
-  }, []);
-
-  const createEmptySlot = () => ({
-    id: `${Date.now()}_slot_${Math.random()}`,
-    activityName: '',
-    start_time: '08:00',
-    end_time: '09:00'
-  });
+  }, [loadActivities, loadPresets]);
 
   // Initialize a new preset creation flow
   const handleAddNewPreset = () => {
     setEditingPresetId(null);
     setPresetName('');
-    
+
     const initial = {};
-    DAYS_OF_WEEK.forEach(day => {
+    DAYS_OF_WEEK.forEach((day) => {
       initial[day] = [createEmptySlot()];
     });
-    
+
     setWeeklySchedule(initial);
     setSelectedDay('Monday');
     setIsEditing(true);
@@ -209,13 +207,13 @@ export default function Presets() {
     setPresetName(preset.name);
 
     const initial = {
-      'Monday': [],
-      'Tuesday': [],
-      'Wednesday': [],
-      'Thursday': [],
-      'Friday': [],
-      'Saturday': [],
-      'Sunday': []
+      Monday: [],
+      Tuesday: [],
+      Wednesday: [],
+      Thursday: [],
+      Friday: [],
+      Saturday: [],
+      Sunday: [],
     };
 
     if (preset.daySlots && preset.daySlots.length > 0) {
@@ -229,24 +227,24 @@ export default function Presets() {
         for (let j = 0; j < maxSlots; j++) {
           const timing = timeList[j] || {};
           slots.push({
-            id: `${Date.now()}_group_${i}_slot_${j}_${Math.random()}`,
+            id: nextLocalSlotId(`group_${i}_slot_${j}`),
             activityName: actList[j] || '',
             start_time: timing.start_time || '08:00',
-            end_time: timing.end_time || '09:00'
+            end_time: timing.end_time || '09:00',
           });
         }
 
-        days.forEach(day => {
+        days.forEach((day) => {
           if (DAYS_OF_WEEK.includes(day)) {
             // Deep copy slots to avoid reference sharing
-            initial[day] = slots.map(s => ({ ...s, id: `${Date.now()}_slot_${Math.random()}` }));
+            initial[day] = slots.map((s) => ({ ...s, id: nextLocalSlotId(day) }));
           }
         });
       }
     }
 
     // Ensure all days have at least one slot
-    DAYS_OF_WEEK.forEach(day => {
+    DAYS_OF_WEEK.forEach((day) => {
       if (initial[day].length === 0) {
         initial[day] = [createEmptySlot()];
       }
@@ -268,11 +266,11 @@ export default function Presets() {
     const newSchedule = { ...weeklySchedule };
     const slots = [...newSchedule[selectedDay]];
     slots.splice(slotIndex, 1);
-    
+
     if (slots.length === 0) {
       slots.push(createEmptySlot());
     }
-    
+
     newSchedule[selectedDay] = slots;
     setWeeklySchedule(newSchedule);
   };
@@ -285,7 +283,7 @@ export default function Presets() {
 
   const toggleCopyTargetDay = (day) => {
     if (copyTargetDays.includes(day)) {
-      setCopyTargetDays(copyTargetDays.filter(d => d !== day));
+      setCopyTargetDays(copyTargetDays.filter((d) => d !== day));
     } else {
       setCopyTargetDays([...copyTargetDays, day]);
     }
@@ -299,18 +297,21 @@ export default function Presets() {
 
     const currentSlots = weeklySchedule[selectedDay] || [];
     const newSchedule = { ...weeklySchedule };
-    
-    copyTargetDays.forEach(day => {
+
+    copyTargetDays.forEach((day) => {
       // Deep copy slots with fresh IDs
-      newSchedule[day] = currentSlots.map(slot => ({
+      newSchedule[day] = currentSlots.map((slot) => ({
         ...slot,
-        id: `${Date.now()}_slot_${Math.random()}`
+        id: `${Date.now()}_slot_${Math.random()}`,
       }));
     });
-    
+
     setWeeklySchedule(newSchedule);
     setCopyModalVisible(false);
-    Alert.alert('Copied!', `Schedule copied from ${selectedDay} to: ${copyTargetDays.map(d => DAYS_SHORT[d]).join(', ')}.`);
+    Alert.alert(
+      'Copied!',
+      `Schedule copied from ${selectedDay} to: ${copyTargetDays.map((d) => DAYS_SHORT[d]).join(', ')}.`,
+    );
   };
 
   // Save Flow with Automatic Grouping
@@ -325,7 +326,7 @@ export default function Presets() {
     for (let i = 0; i < DAYS_OF_WEEK.length; i++) {
       const day = DAYS_OF_WEEK[i];
       const slots = weeklySchedule[day] || [];
-      if (slots.some(s => s.activityName)) {
+      if (slots.some((s) => s.activityName)) {
         hasAnyActivities = true;
         break;
       }
@@ -337,38 +338,40 @@ export default function Presets() {
 
     // Automatically group identical valid schedules
     const groups = []; // will contain { signature, days: [], activities: [], timings: [] }
-    
-    DAYS_OF_WEEK.forEach(day => {
+
+    DAYS_OF_WEEK.forEach((day) => {
       const slots = weeklySchedule[day] || [];
-      const validSlots = slots.filter(s => s.activityName);
-      
+      const validSlots = slots.filter((s) => s.activityName);
+
       if (validSlots.length === 0) return; // Skip empty days
 
       // Sort slots by start_time to ensure consistent comparison signature
       const sortedSlots = [...validSlots].sort((a, b) => a.start_time.localeCompare(b.start_time));
-      
-      const signature = JSON.stringify(sortedSlots.map(s => ({
-        activityName: s.activityName,
-        start_time: s.start_time,
-        end_time: s.end_time
-      })));
 
-      const existingGroup = groups.find(g => g.signature === signature);
+      const signature = JSON.stringify(
+        sortedSlots.map((s) => ({
+          activityName: s.activityName,
+          start_time: s.start_time,
+          end_time: s.end_time,
+        })),
+      );
+
+      const existingGroup = groups.find((g) => g.signature === signature);
       if (existingGroup) {
         existingGroup.days.push(day);
       } else {
         groups.push({
           signature,
           days: [day],
-          activities: sortedSlots.map(s => s.activityName),
-          timings: sortedSlots.map(s => ({ start_time: s.start_time, end_time: s.end_time }))
+          activities: sortedSlots.map((s) => s.activityName),
+          timings: sortedSlots.map((s) => ({ start_time: s.start_time, end_time: s.end_time })),
         });
       }
     });
 
-    const daySlots = groups.map(g => g.days);
-    const activities = groups.map(g => g.activities);
-    const timings = groups.map(g => g.timings);
+    const daySlots = groups.map((g) => g.days);
+    const activities = groups.map((g) => g.activities);
+    const timings = groups.map((g) => g.timings);
 
     try {
       setLoading(true);
@@ -377,20 +380,19 @@ export default function Presets() {
           name: presetName,
           daySlots,
           activities,
-          timings
+          timings,
         });
       } else {
         await presetsService.create({
           name: presetName,
           daySlots,
           activities,
-          timings
+          timings,
         });
       }
-      console.log(weeklySchedule);
       setIsEditing(false);
       loadPresets();
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to save preset. Please try again.');
       setLoading(false);
     }
@@ -400,28 +402,24 @@ export default function Presets() {
   const handleDeletePreset = async () => {
     if (!editingPresetId) return;
 
-    Alert.alert(
-      'Delete Preset',
-      'Are you sure you want to delete this preset?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await presetsService.delete(editingPresetId);
-              setIsEditing(false);
-              loadPresets();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete preset. Please try again.');
-              setLoading(false);
-            }
+    Alert.alert('Delete Preset', 'Are you sure you want to delete this preset?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setLoading(true);
+            await presetsService.delete(editingPresetId);
+            setIsEditing(false);
+            loadPresets();
+          } catch {
+            Alert.alert('Error', 'Failed to delete preset. Please try again.');
+            setLoading(false);
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
   // Helper to compute activity count for list item card
@@ -433,21 +431,24 @@ export default function Presets() {
   // Check if a day has configured activities
   const hasActivitiesConfigured = (day) => {
     const slots = weeklySchedule[day] || [];
-    return slots.some(s => s.activityName !== '');
+    return slots.some((s) => s.activityName !== '');
   };
 
   // Renders a preview summary of days & activities inside cards
   const renderPresetPreview = (preset) => {
     if (!preset.daySlots || preset.daySlots.length === 0) return null;
     return preset.daySlots.map((days, idx) => {
-      const dayNames = days.map(d => DAYS_SHORT[d] || d).join(', ');
-      const activityNames = preset.activities[idx] ? preset.activities[idx].slice(0, 3).join(', ') : '';
+      const dayNames = days.map((d) => DAYS_SHORT[d] || d).join(', ');
+      const activityNames = preset.activities[idx]
+        ? preset.activities[idx].slice(0, 3).join(', ')
+        : '';
       const hasMore = preset.activities[idx] && preset.activities[idx].length > 3 ? '...' : '';
       return (
         <View key={idx} style={styles.previewRow}>
           <ThemedText style={styles.previewDays}>{dayNames}:</ThemedText>
           <ThemedText style={styles.previewActivities} numberOfLines={1}>
-            {activityNames || 'No activities'}{hasMore}
+            {activityNames || 'No activities'}
+            {hasMore}
           </ThemedText>
         </View>
       );
@@ -461,7 +462,9 @@ export default function Presets() {
         <View style={styles.headerContainer}>
           <View style={styles.headerLeft}>
             <LayoutGrid size={28} color={Colors.iconColour} strokeWidth={2} />
-            <ThemedText title style={styles.header}>Presets</ThemedText>
+            <ThemedText title style={styles.header}>
+              Presets
+            </ThemedText>
           </View>
           <TouchableOpacity style={styles.addButton} onPress={handleAddNewPreset}>
             <Plus size={24} color={Colors.iconColour} strokeWidth={2} />
@@ -497,14 +500,24 @@ export default function Presets() {
                   key={preset.$id}
                   style={[
                     styles.presetRowCard,
-                    { backgroundColor: index % 2 === 0 ? Colors.cardBackground : 'rgba(255, 255, 255, 0.4)' }
+                    {
+                      backgroundColor:
+                        index % 2 === 0 ? Colors.cardBackground : 'rgba(255, 255, 255, 0.4)',
+                    },
                   ]}
                   onPress={() => handleEditPreset(preset)}
                 >
                   <View style={styles.presetCardHeader}>
                     <View style={styles.presetTitleLayout}>
-                      <Folder size={24} color={Colors.iconColour} strokeWidth={1.5} style={styles.folderIcon} />
-                      <ThemedText title style={styles.presetName}>{preset.name}</ThemedText>
+                      <Folder
+                        size={24}
+                        color={Colors.iconColour}
+                        strokeWidth={1.5}
+                        style={styles.folderIcon}
+                      />
+                      <ThemedText title style={styles.presetName}>
+                        {preset.name}
+                      </ThemedText>
                     </View>
                     <View style={styles.activitiesCountBadge}>
                       <ThemedText style={styles.badgeText}>
@@ -513,12 +526,15 @@ export default function Presets() {
                     </View>
                   </View>
 
-                  <View style={styles.previewContainer}>
-                    {renderPresetPreview(preset)}
-                  </View>
+                  <View style={styles.previewContainer}>{renderPresetPreview(preset)}</View>
 
                   <View style={styles.starContainer}>
-                    <Star size={16} color={Colors.iconColour} strokeWidth={1.5} fill={Colors.iconColour} />
+                    <Star
+                      size={16}
+                      color={Colors.iconColour}
+                      strokeWidth={1.5}
+                      fill={Colors.iconColour}
+                    />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -545,7 +561,9 @@ export default function Presets() {
             {editingPresetId ? 'Edit Preset' : 'New Preset'}
           </ThemedText>
           <TouchableOpacity style={styles.saveHeaderButton} onPress={handleSavePreset}>
-            <ThemedText title style={styles.saveHeaderText}>Save</ThemedText>
+            <ThemedText title style={styles.saveHeaderText}>
+              Save
+            </ThemedText>
           </TouchableOpacity>
         </View>
 
@@ -565,7 +583,7 @@ export default function Presets() {
 
           {/* Horizontal Day Tabs */}
           <View style={styles.dayTabsContainer}>
-            {DAYS_OF_WEEK.map(day => {
+            {DAYS_OF_WEEK.map((day) => {
               const isActive = selectedDay === day;
               const hasConfig = hasActivitiesConfigured(day);
               return (
@@ -574,7 +592,9 @@ export default function Presets() {
                   style={[styles.dayTabChip, isActive && styles.dayTabChipActive]}
                   onPress={() => setSelectedDay(day)}
                 >
-                  <ThemedText style={[styles.dayTabChipText, isActive && styles.dayTabChipTextActive]}>
+                  <ThemedText
+                    style={[styles.dayTabChipText, isActive && styles.dayTabChipTextActive]}
+                  >
                     {DAYS_SHORT[day]}
                   </ThemedText>
                   {hasConfig && (
@@ -594,7 +614,7 @@ export default function Presets() {
                   {selectedDay} Schedule
                 </ThemedText>
               </View>
-              
+
               <TouchableOpacity style={styles.copyScheduleBtn} onPress={handleOpenCopyModal}>
                 <Copy size={14} color={Colors.secondaryText} />
                 <ThemedText style={styles.copyScheduleBtnText}>Copy To...</ThemedText>
@@ -614,7 +634,9 @@ export default function Presets() {
                   <View style={styles.timeButtonsContainer}>
                     <TouchableOpacity
                       style={styles.timeButton}
-                      onPress={() => setActiveTimePicker({ day: selectedDay, slotIndex: index, type: 'start' })}
+                      onPress={() =>
+                        setActiveTimePicker({ day: selectedDay, slotIndex: index, type: 'start' })
+                      }
                     >
                       <Clock size={14} color={Colors.iconColour} style={styles.slotIcon} />
                       <ThemedText style={styles.timeButtonText}>
@@ -623,7 +645,9 @@ export default function Presets() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.timeButton}
-                      onPress={() => setActiveTimePicker({ day: selectedDay, slotIndex: index, type: 'end' })}
+                      onPress={() =>
+                        setActiveTimePicker({ day: selectedDay, slotIndex: index, type: 'end' })
+                      }
                     >
                       <Clock size={14} color={Colors.iconColour} style={styles.slotIcon} />
                       <ThemedText style={styles.timeButtonText}>
@@ -645,7 +669,7 @@ export default function Presets() {
                     <ThemedText
                       style={[
                         styles.activitySelectorText,
-                        !slot.activityName && styles.activityPlaceholder
+                        !slot.activityName && styles.activityPlaceholder,
                       ]}
                       numberOfLines={1}
                     >
@@ -665,10 +689,7 @@ export default function Presets() {
             </View>
 
             {/* Add Activity Button */}
-            <TouchableOpacity
-              style={styles.addSlotBtn}
-              onPress={addSlotToCurrentDay}
-            >
+            <TouchableOpacity style={styles.addSlotBtn} onPress={addSlotToCurrentDay}>
               <Plus size={16} color={Colors.iconColour} strokeWidth={2.5} />
               <ThemedText style={styles.addSlotText}>Add Activity</ThemedText>
             </TouchableOpacity>
@@ -692,7 +713,7 @@ export default function Presets() {
               parseTimeString(
                 activeTimePicker.type === 'start'
                   ? weeklySchedule[activeTimePicker.day][activeTimePicker.slotIndex].start_time
-                  : weeklySchedule[activeTimePicker.day][activeTimePicker.slotIndex].end_time
+                  : weeklySchedule[activeTimePicker.day][activeTimePicker.slotIndex].end_time,
               ) || new Date()
             }
             mode="time"
@@ -707,13 +728,13 @@ export default function Presets() {
     setActiveTimePicker(null);
     if (event.type === 'dismissed' || !date || !activeTimePicker) return;
     const timeStr = formatTimeString(date);
-    setWeeklySchedule(prev => {
+    setWeeklySchedule((prev) => {
       const newSchedule = { ...prev };
       const daySlots = [...(newSchedule[activeTimePicker.day] || [])];
       const timeField = activeTimePicker.type === 'start' ? 'start_time' : 'end_time';
       daySlots[activeTimePicker.slotIndex] = {
         ...daySlots[activeTimePicker.slotIndex],
-        [timeField]: timeStr
+        [timeField]: timeStr,
       };
       newSchedule[activeTimePicker.day] = daySlots;
       return newSchedule;
@@ -778,12 +799,12 @@ export default function Presets() {
                   style={styles.activitySelectionItem}
                   onPress={() => {
                     if (activeSlot) {
-                      setWeeklySchedule(prev => {
+                      setWeeklySchedule((prev) => {
                         const newSchedule = { ...prev };
                         const daySlots = [...(newSchedule[activeSlot.day] || [])];
                         daySlots[activeSlot.slotIndex] = {
                           ...daySlots[activeSlot.slotIndex],
-                          activityName: activity.name
+                          activityName: activity.name,
                         };
                         newSchedule[activeSlot.day] = daySlots;
                         return newSchedule;
@@ -821,7 +842,8 @@ export default function Presets() {
           >
             <View style={styles.modalHeader}>
               <ThemedText title style={styles.modalTitle}>
-                Copy {selectedDay}'s Schedule
+                Copy {selectedDay}
+                {"'s Schedule"}
               </ThemedText>
               <TouchableOpacity
                 style={styles.closeModalBtn}
@@ -836,7 +858,7 @@ export default function Presets() {
             </ThemedText>
 
             <ScrollView style={styles.copyDaysScroll} showsVerticalScrollIndicator={false}>
-              {DAYS_OF_WEEK.filter(day => day !== selectedDay).map(day => {
+              {DAYS_OF_WEEK.filter((day) => day !== selectedDay).map((day) => {
                 const isSelected = copyTargetDays.includes(day);
                 return (
                   <TouchableOpacity

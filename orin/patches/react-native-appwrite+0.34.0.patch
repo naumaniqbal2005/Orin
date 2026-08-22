@@ -1,0 +1,25 @@
+diff --git a/node_modules/react-native-appwrite/dist/cjs/sdk.js b/node_modules/react-native-appwrite/dist/cjs/sdk.js
+index 1b54907..24a1901 100644
+--- a/node_modules/react-native-appwrite/dist/cjs/sdk.js
++++ b/node_modules/react-native-appwrite/dist/cjs/sdk.js
+@@ -2,7 +2,7 @@
+ 
+ var reactNative = require('react-native');
+ var JSONbigModule = require('json-bigint');
+-var FileSystem = require('expo-file-system');
++var FileSystem = require('expo-file-system/legacy');
+ 
+ function _interopNamespaceDefault(e) {
+     var n = Object.create(null);
+diff --git a/node_modules/react-native-appwrite/dist/esm/sdk.js b/node_modules/react-native-appwrite/dist/esm/sdk.js
+index 7d7ad72..45af3c5 100644
+--- a/node_modules/react-native-appwrite/dist/esm/sdk.js
++++ b/node_modules/react-native-appwrite/dist/esm/sdk.js
+@@ -1,6 +1,6 @@
+ import { Platform } from 'react-native';
+ import JSONbigModule from 'json-bigint';
+-import * as FileSystem from 'expo-file-system';
++import * as FileSystem from 'expo-file-system/legacy';
+ 
+ /******************************************************************************
+ Copyright (c) Microsoft Corporation.

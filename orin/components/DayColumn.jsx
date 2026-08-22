@@ -5,30 +5,25 @@ import ThemedText from './ThemedText';
 export default function DayColumn({ slots = [], date }) {
   // Generate 24 hour slots (0-23)
   const hourSlots = Array.from({ length: 24 }, (_, i) => {
-    const slot = slots.find(s => s.hourStart === i);
+    const slot = slots.find((s) => s.hourStart === i);
     return {
       hour: i,
       activity: slot?.activityId || null,
       status: slot?.status || 'unscheduled',
-      duration: slot?.duration || 1
+      duration: slot?.duration || 1,
     };
   });
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText style={styles.dateText} title>{date}</ThemedText>
+      <ThemedText style={styles.dateText} title>
+        {date}
+      </ThemedText>
       {hourSlots.map((slot) => (
         <View key={slot.hour} style={styles.hourSlot}>
           <ThemedText style={styles.hourText}>{slot.hour}:00</ThemedText>
-          <View style={[
-            styles.activitySlot,
-            slot.activity && styles.filledSlot
-          ]}>
-            {slot.activity && (
-              <ThemedText style={styles.activityText}>
-                Activity
-              </ThemedText>
-            )}
+          <View style={[styles.activitySlot, slot.activity && styles.filledSlot]}>
+            {slot.activity && <ThemedText style={styles.activityText}>Activity</ThemedText>}
           </View>
         </View>
       ))}

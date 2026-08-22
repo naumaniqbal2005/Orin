@@ -5,7 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -48,10 +48,10 @@ function formatTimeDisplay(timeStr) {
 export default function Settings() {
   const router = useRouter();
   const [wakeupDate, setWakeupDate] = useState(() =>
-    createTimeDate(DEFAULT_WAKEUP.hours, DEFAULT_WAKEUP.minutes)
+    createTimeDate(DEFAULT_WAKEUP.hours, DEFAULT_WAKEUP.minutes),
   );
   const [sleepDate, setSleepDate] = useState(() =>
-    createTimeDate(DEFAULT_SLEEP.hours, DEFAULT_SLEEP.minutes)
+    createTimeDate(DEFAULT_SLEEP.hours, DEFAULT_SLEEP.minutes),
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -76,7 +76,7 @@ export default function Settings() {
   }, [loadSettings]);
 
   const handlePickerChange = (type, event, selectedDate) => {
-      setActivePicker(null);
+    setActivePicker(null);
 
     if (event.type === 'dismissed' || !selectedDate) return;
     if (type === 'wakeup') setWakeupDate(selectedDate);
@@ -131,10 +131,7 @@ export default function Settings() {
               </ThemedText>
 
               <View style={styles.settingsCard}>
-                <TouchableOpacity
-                  style={styles.timeRow}
-                  onPress={() => setActivePicker('wakeup')}
-                >
+                <TouchableOpacity style={styles.timeRow} onPress={() => setActivePicker('wakeup')}>
                   <View style={[styles.timeIconContainer, styles.wakeupIcon]}>
                     <Sun size={22} color={Colors.iconColour} strokeWidth={1.5} />
                   </View>
@@ -149,10 +146,7 @@ export default function Settings() {
 
                 <View style={styles.timeDivider} />
 
-                <TouchableOpacity
-                  style={styles.timeRow}
-                  onPress={() => setActivePicker('sleep')}
-                >
+                <TouchableOpacity style={styles.timeRow} onPress={() => setActivePicker('sleep')}>
                   <View style={[styles.timeIconContainer, styles.sleepIcon]}>
                     <Moon size={22} color={Colors.iconColour} strokeWidth={1.5} />
                   </View>

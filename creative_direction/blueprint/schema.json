@@ -1,0 +1,193 @@
+{
+  "organizationId": "xxx",
+  "projectId": "xxx",
+  "projectName": "Scheduler",
+  "endpoint": "https://sfo.cloud.appwrite.io/v1",
+  "settings": {
+    "services": {
+      "account": true,
+      "avatars": true,
+      "databases": true,
+      "locale": true,
+      "health": true,
+      "storage": true,
+      "teams": true,
+      "users": true,
+      "sites": true,
+      "functions": true,
+      "graphql": true,
+      "messaging": true
+    },
+    "protocols": {
+      "rest": true,
+      "graphql": true,
+      "websocket": true
+    },
+    "auth": {
+      "methods": {
+        "jwt": true,
+        "phone": true,
+        "invites": true,
+        "anonymous": true,
+        "email-otp": true,
+        "magic-url": true,
+        "email-password": true
+      },
+      "security": {
+        "duration": 31536000,
+        "limit": null,
+        "sessionsLimit": null,
+        "passwordHistory": null,
+        "passwordDictionary": false,
+        "personalDataCheck": false,
+        "sessionAlerts": false,
+        "mockNumbers": []
+      }
+    }
+  },
+  "tablesDB": [
+    {
+      "$id": "6a4bead3002f1426a8ee",
+      "name": "orin-database-dev",
+      "enabled": true
+    }
+  ],
+  "tables": [
+    {
+      "$id": "user",
+      "$permissions": [
+        "create(\"users\")",
+        "read(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6a4bead3002f1426a8ee",
+      "name": "user",
+      "enabled": true,
+      "rowSecurity": false,
+      "columns": [
+        {
+          "key": "wakeup_time",
+          "type": "text",
+          "required": false,
+          "array": false,
+          "default": null,
+          "encrypt": false
+        },
+        {
+          "key": "sleep_time",
+          "type": "text",
+          "required": false,
+          "array": false,
+          "default": null,
+          "encrypt": false
+        },
+        {
+          "key": "last_selected_preset",
+          "type": "text",
+          "required": false,
+          "array": false,
+          "default": null,
+          "encrypt": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "activities",
+      "$permissions": [
+        "create(\"users\")",
+        "read(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6a4bead3002f1426a8ee",
+      "name": "activities",
+      "enabled": true,
+      "rowSecurity": false,
+      "columns": [
+        {
+          "key": "userId",
+          "type": "text",
+          "required": true,
+          "array": false,
+          "default": null,
+          "encrypt": false
+        },
+        {
+          "key": "name",
+          "type": "text",
+          "required": true,
+          "array": false,
+          "default": null,
+          "encrypt": false
+        },
+        {
+          "key": "description",
+          "type": "text",
+          "required": false,
+          "array": false,
+          "default": null,
+          "encrypt": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "presets",
+      "$permissions": [
+        "create(\"users\")",
+        "read(\"users\")",
+        "update(\"users\")",
+        "delete(\"users\")"
+      ],
+      "databaseId": "6a4bead3002f1426a8ee",
+      "name": "presets",
+      "enabled": true,
+      "rowSecurity": false,
+      "columns": [
+        {
+          "key": "userId",
+          "type": "text",
+          "required": true,
+          "array": false,
+          "default": null,
+          "encrypt": false
+        },
+        {
+          "key": "name",
+          "type": "text",
+          "required": true,
+          "array": false,
+          "default": null,
+          "encrypt": false
+        },
+        {
+          "key": "activities",
+          "type": "text",
+          "required": false,
+          "array": true,
+          "default": null,
+          "encrypt": false
+        },
+        {
+          "key": "timings",
+          "type": "text",
+          "required": false,
+          "array": true,
+          "default": null,
+          "encrypt": false
+        },
+        {
+          "key": "daySlots",
+          "type": "text",
+          "required": false,
+          "array": true,
+          "default": null,
+          "encrypt": false
+        }
+      ],
+      "indexes": []
+    }
+  ]
+}

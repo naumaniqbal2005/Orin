@@ -9,7 +9,7 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "statusBarStyle": "light-content"
+      "bundleIdentifier": "com.naumaniqbal2005.orin"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,21 +18,14 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "statusBar": {
-        "backgroundColor": "#202020",
-        "barStyle": "light-content",
-        "translucent": false
-      },
-      "navigationBar": {
-        "backgroundColor": "#202020",
-        "barStyle": "light-content"
-      }
+      "package": "com.naumaniqbal2005.orin"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       [
         "expo-status-bar",
         {
@@ -43,6 +36,12 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5bd1c4a7-8e6f-4ae5-8bc0-1de4f66b6a60"
+      }
+    }
   }
 }

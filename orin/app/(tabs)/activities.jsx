@@ -1,9 +1,18 @@
-import { StyleSheet, TextInput, ScrollView, TouchableOpacity, Modal, Alert, View, ActivityIndicator, RefreshControl } from 'react-native';
+import {
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  Alert,
+  View,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import ThemedView from '../../components/ThemedView';
 import ThemedText from '../../components/ThemedText';
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Sparkles, RefreshCw } from 'lucide-react-native';
+import { Plus, X, Sparkles } from 'lucide-react-native';
 import { activitiesService } from '../../lib/activities';
 import { Colors } from '../../constants/color';
 
@@ -15,14 +24,9 @@ export default function Activities() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  useEffect(() => {
-    loadActivities();
-  }, []);
-
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async () => {
     try {
       const result = await activitiesService.list();
-      console.log('Activities result:', result);
       setActivities(result.rows || result.documents || []);
     } catch (error) {
       console.error('Error loading activities:', error);
@@ -30,25 +34,27 @@ export default function Activities() {
         Alert.alert(
           'Setup Required',
           'Please create the "activities" table in Appwrite Console with proper permissions.',
-          [{ text: 'OK' }]
+          [{ text: 'OK' }],
         );
       } else {
-        Alert.alert(
-          'Error',
-          'Failed to load activities. Please check your connection.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Error', 'Failed to load activities. Please check your connection.', [
+          { text: 'OK' },
+        ]);
       }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadActivities();
+  }, [loadActivities]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadActivities();
-  }, []);
+  }, [loadActivities]);
 
   const handleCreate = async () => {
     if (!name.trim()) {
@@ -98,14 +104,16 @@ export default function Activities() {
       style={styles.gradientContainer}
     >
       <View style={styles.headerContainer}>
-        <ThemedText title style={styles.header}>Your Activities</ThemedText>
+        <ThemedText title style={styles.header}>
+          Your Activities
+        </ThemedText>
         <View style={styles.iconContainer}>
           <Sparkles size={24} color={Colors.iconColour} />
         </View>
       </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -119,12 +127,25 @@ export default function Activities() {
         {activities.length === 0 ? (
           <View style={styles.emptyContainer}>
             <ThemedText style={styles.emptyText}>No activities yet</ThemedText>
-            <ThemedText style={styles.emptySubtext}>Tap the + button to add your first activity</ThemedText>
+            <ThemedText style={styles.emptySubtext}>
+              Tap the + button to add your first activity
+            </ThemedText>
           </View>
         ) : (
           activities.map((activity, index) => (
-            <View key={activity.$id} style={[styles.activityCard, { backgroundColor: index % 2 === 0 ? Colors.cardBackground : 'rgba(255, 255, 255, 0.4)' }]}>
-              <ThemedText title style={styles.activityName}>{activity.name}</ThemedText>
+            <View
+              key={activity.$id}
+              style={[
+                styles.activityCard,
+                {
+                  backgroundColor:
+                    index % 2 === 0 ? Colors.cardBackground : 'rgba(255, 255, 255, 0.4)',
+                },
+              ]}
+            >
+              <ThemedText title style={styles.activityName}>
+                {activity.name}
+              </ThemedText>
               <ThemedText style={styles.activityDescription}>
                 {activity.description || 'No description'}
               </ThemedText>
@@ -140,10 +161,7 @@ export default function Activities() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-      >
+      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
         <LinearGradient
           colors={[Colors.softLavender, Colors.blushPink]}
           style={styles.fabGradient}
@@ -165,7 +183,9 @@ export default function Activities() {
             colors={[Colors.pastelPurpleStart, Colors.pastelPurpleEnd]}
             style={styles.modalContent}
           >
-            <ThemedText title style={styles.modalTitle}>New Activity</ThemedText>
+            <ThemedText title style={styles.modalTitle}>
+              New Activity
+            </ThemedText>
 
             <TextInput
               style={styles.input}
@@ -198,10 +218,7 @@ export default function Activities() {
               >
                 <ThemedText style={styles.buttonText}>Cancel</ThemedText>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.saveButton]}
-                onPress={handleCreate}
-              >
+              <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleCreate}>
                 <ThemedText style={styles.buttonText}>Save</ThemedText>
               </TouchableOpacity>
             </View>
