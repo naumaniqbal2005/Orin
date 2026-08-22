@@ -7,6 +7,9 @@
 **/coverage/
 **/.cache/
 
+# Local product research and creative roadmap
+/creative_direction/
+
 # Local environment and secret overrides
 **/.env
 **/.env.*
