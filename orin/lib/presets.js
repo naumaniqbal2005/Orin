@@ -1,157 +1,173 @@
-import { ID, Query } from 'appwrite';
+import { ID, Query } from 'react-native-appwrite';
 import { tablesDB, DATABASE_ID } from './appwrite';
 import { getCurrentUserId, userDocumentPermissions } from './auth';
+import { TABLES, pickFields } from './schema';
+import { listAllRows, withTransaction } from './tableRows';
+import { hydratePreset, presetToSlots } from './presetMapping';
 
-const TABLE_ID = 'presets';
-//columns are : id, userId, name, activities, timings, daySlots
-/* {
-  "id": "preset123",
-  "userId": "user456",
-  "name": "Weekly Routine",
-  "days": ["Monday", "Tuesday"],
-  "activities": [
-    ["Exercise", "Breakfast", "Commute"],
-    ["Yoga", "Work", "Dinner"]
-  ],
-  "timings": [
-    ["07:00", "07:30", "08:00"],
-    ["06:30", "09:00", "19:00"]
-  ],
-  "createdAt": "2026-07-14T09:51:00Z",
-  "updatedAt": "2026-07-14T09:51:00Z"
-//} */
-//dummy data
+const METADATA_FIELDS = ['name', 'description', 'colorToken', 'archivedAt'];
 
-function deserializeRow(row) {
-  if (!row) return row;
-  const newRow = { ...row };
-  if (newRow.activities) {
-    newRow.activities = newRow.activities.map((str) => {
-      try {
-        return JSON.parse(str);
-      } catch {
-        return [];
-      }
-    });
-  }
-  if (newRow.timings) {
-    newRow.timings = newRow.timings.map((str) => {
-      try {
-        return JSON.parse(str);
-      } catch {
-        return [];
-      }
-    });
-  }
-  if (newRow.daySlots) {
-    newRow.daySlots = newRow.daySlots.map((str) => {
-      try {
-        return JSON.parse(str);
-      } catch {
-        return [];
-      }
-    });
-  }
-  return newRow;
+async function loadRelations(userId, presetId) {
+  const [slots, activities] = await Promise.all([
+    listAllRows(TABLES.presetSlots, [
+      Query.equal('userId', userId),
+      ...(presetId ? [Query.equal('presetId', presetId)] : []),
+    ]),
+    listAllRows(TABLES.activities, [Query.equal('userId', userId)]),
+  ]);
+  return { slots, activities };
 }
 
-function serializeData(data) {
-  const serialized = { ...data };
-  if (serialized.activities !== undefined) {
-    serialized.activities = (serialized.activities || []).map((group) => JSON.stringify(group));
+async function validateActivities(slots, userId) {
+  const activities = await listAllRows(TABLES.activities, [Query.equal('userId', userId)]);
+  const owned = new Set(
+    activities.filter((activity) => !activity.archivedAt).map((activity) => activity.$id),
+  );
+  if (slots.some((slot) => !owned.has(slot.activityId))) {
+    throw new Error('A selected activity is unavailable. Choose an activity from your library.');
   }
-  if (serialized.timings !== undefined) {
-    serialized.timings = (serialized.timings || []).map((group) => JSON.stringify(group));
+}
+
+function metadata(data) {
+  const { daySlots, activities, activityIds, timings, ...fields } = data;
+  return pickFields(fields, METADATA_FIELDS);
+}
+
+function guardTransactionSize(operations) {
+  if (operations > 100)
+    throw new Error(
+      'This save exceeds the Free plan transaction limit (100 row changes). Reduce the number of slots.',
+    );
+}
+
+async function writeSlots(presetId, slots, userId, transactionId) {
+  for (const slot of slots) {
+    await tablesDB.createRow({
+      databaseId: DATABASE_ID,
+      tableId: TABLES.presetSlots,
+      rowId: ID.unique(),
+      data: { ...slot, presetId, userId },
+      permissions: userDocumentPermissions(userId),
+      transactionId,
+    });
   }
-  if (serialized.daySlots !== undefined) {
-    serialized.daySlots = (serialized.daySlots || []).map((group) => JSON.stringify(group));
-  }
-  return serialized;
 }
 
 export const presetsService = {
   async create(preset) {
-    try {
-      const userId = await getCurrentUserId();
-      const serializedData = serializeData({
-        userId: userId,
-        name: preset.name,
-        activities: preset.activities,
-        timings: preset.timings,
-        daySlots: preset.daySlots,
-      });
-      const result = await tablesDB.createRow({
+    const userId = await getCurrentUserId();
+    const slots = presetToSlots(preset);
+    guardTransactionSize(1 + slots.length);
+    await validateActivities(slots, userId);
+    const presetId = ID.unique();
+    await withTransaction(async (transactionId) => {
+      await tablesDB.createRow({
         databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        rowId: ID.unique(),
-        data: serializedData,
+        tableId: TABLES.presets,
+        rowId: presetId,
+        data: { ...metadata(preset), userId },
         permissions: userDocumentPermissions(userId),
+        transactionId,
       });
-      return deserializeRow(result);
-    } catch (error) {
-      console.error('Error creating preset:', error);
-      throw error;
-    }
+      await writeSlots(presetId, slots, userId, transactionId);
+    });
+    return this.get(presetId);
   },
+
   async list() {
-    try {
-      const userId = await getCurrentUserId();
-      const results = await tablesDB.listRows({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        queries: [Query.equal('userId', userId)],
-      });
-      if (results.rows || results.documents) {
-        const list = results.rows || results.documents;
-        results.rows = list.map((row) => deserializeRow(row));
-        results.documents = results.rows; // Ensure both are updated
-      }
-      return results;
-    } catch (error) {
-      console.error('Error listing presets:', error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    const [presets, { slots, activities }] = await Promise.all([
+      listAllRows(TABLES.presets, [Query.equal('userId', userId)]),
+      loadRelations(userId),
+    ]);
+    const rows = presets.map((preset) =>
+      hydratePreset(
+        preset,
+        slots.filter((slot) => slot.presetId === preset.$id),
+        activities,
+      ),
+    );
+    return { rows, total: rows.length };
   },
+
   async get(id) {
-    try {
-      const result = await tablesDB.getRow({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        rowId: id,
-      });
-      return deserializeRow(result);
-    } catch (error) {
-      console.error('Error getting preset:', error);
-      throw error;
-    }
+    const userId = await getCurrentUserId();
+    const [preset, { slots, activities }] = await Promise.all([
+      tablesDB.getRow({ databaseId: DATABASE_ID, tableId: TABLES.presets, rowId: id }),
+      loadRelations(userId, id),
+    ]);
+    if (preset.userId !== userId) throw new Error('Preset is unavailable.');
+    return hydratePreset(preset, slots, activities);
   },
 
   async update(id, data) {
-    try {
-      const serializedData = serializeData(data);
-      const result = await tablesDB.updateRow({
+    const current = await this.get(id);
+    const userId = await getCurrentUserId();
+    const replacesSlots = ['daySlots', 'activityIds', 'timings'].some(
+      (field) => data[field] !== undefined,
+    );
+    const oldSlots = replacesSlots
+      ? await listAllRows(TABLES.presetSlots, [
+          Query.equal('userId', userId),
+          Query.equal('presetId', id),
+        ])
+      : [];
+    const slots = replacesSlots ? presetToSlots({ ...current, ...data }) : [];
+    guardTransactionSize(1 + oldSlots.length + slots.length);
+    if (replacesSlots) await validateActivities(slots, userId);
+    await withTransaction(async (transactionId) => {
+      // Reading inside the transaction detects concurrent edits when committing.
+      const latest = await tablesDB.getRow({
         databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
+        tableId: TABLES.presets,
         rowId: id,
-        data: serializedData,
+        transactionId,
       });
-      return deserializeRow(result);
-    } catch (error) {
-      console.error('Error updating presets:', error);
-      throw error;
-    }
+      if (latest.revision !== current.revision)
+        throw new Error('This preset changed. Reload before saving.');
+      await tablesDB.updateRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLES.presets,
+        rowId: id,
+        data: { ...metadata(data), revision: current.revision + 1 },
+        transactionId,
+      });
+      for (const slot of oldSlots) {
+        await tablesDB.deleteRow({
+          databaseId: DATABASE_ID,
+          tableId: TABLES.presetSlots,
+          rowId: slot.$id,
+          transactionId,
+        });
+      }
+      if (replacesSlots) await writeSlots(id, slots, userId, transactionId);
+    });
+    return this.get(id);
   },
 
   async delete(id) {
-    try {
-      return await tablesDB.deleteRow({
+    await this.get(id);
+    const userId = await getCurrentUserId();
+    const slots = await listAllRows(TABLES.presetSlots, [
+      Query.equal('userId', userId),
+      Query.equal('presetId', id),
+    ]);
+    guardTransactionSize(1 + slots.length);
+    return withTransaction(async (transactionId) => {
+      for (const slot of slots) {
+        await tablesDB.deleteRow({
+          databaseId: DATABASE_ID,
+          tableId: TABLES.presetSlots,
+          rowId: slot.$id,
+          transactionId,
+        });
+      }
+      return tablesDB.deleteRow({
         databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
+        tableId: TABLES.presets,
         rowId: id,
+        transactionId,
       });
-    } catch (error) {
-      console.error('Error deleting presets:', error);
-      throw error;
-    }
+    });
   },
 };

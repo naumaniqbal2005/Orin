@@ -1,3 +1,7 @@
+import { Platform } from 'react-native';
+import { timeToMinute } from './schema';
+
+const CHANNEL_ID = 'activity-reminders';
 let Notifications = null;
 let notificationsAvailable = false;
 
@@ -8,15 +12,15 @@ try {
   // Configure notification behavior for local notifications
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
       shouldPlaySound: true,
       shouldSetBadge: true,
     }),
   });
 } catch (error) {
-  console.warn(
-    'expo-notifications not available in Expo Go. Local notifications require a development build.',
-  );
+  notificationsAvailable = false;
+  console.warn('Could not initialize expo-notifications:', error.message);
 }
 
 export const notificationService = {
@@ -28,6 +32,14 @@ export const notificationService = {
   // Request notification permissions
   async requestPermissions() {
     if (!notificationsAvailable) return false;
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+        name: 'Activity reminders',
+        importance: Notifications.AndroidImportance.HIGH,
+        // Omit custom sound to use Android's system notification sound.
+      });
+    }
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -53,31 +65,38 @@ export const notificationService = {
       return null;
     }
 
-    // Parse the start time (format: "HH:MM")
-    const [hours, minutes] = startTime.split(':');
-
-    // Create the trigger date for today
+    const startMinute = timeToMinute(startTime);
     const triggerDate = new Date(date);
-    triggerDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    if (!Number.isFinite(triggerDate.getTime())) throw new Error('Invalid notification date.');
+    triggerDate.setHours(Math.floor(startMinute / 60), startMinute % 60, 0, 0);
 
-    // If the time has already passed today, schedule for tomorrow
-    const now = new Date();
-    if (triggerDate < now) {
-      triggerDate.setDate(triggerDate.getDate() + 1);
-    }
+    // A reminder belongs to its selected day; never move past activities to tomorrow.
+    if (triggerDate.getTime() <= Date.now()) return null;
 
-    const trigger = new Date(triggerDate);
+    const trigger = {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: triggerDate.getTime(),
+      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
+    };
 
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title: 'Activity Starting',
         body: activityName,
-        data: { activityName, startTime },
+        data: { activityName, startTime, source: 'orin-activity-start' },
         sound: true,
       },
       trigger,
     });
 
+    // eslint-disable-next-line no-console
+    console.log('[notification scheduled]', {
+      notificationId,
+      activityName,
+      scheduledTime: triggerDate.toString(),
+    });
+    // eslint-disable-next-line no-console
+    console.log('[pending notifications]', await Notifications.getAllScheduledNotificationsAsync());
     return notificationId;
   },
 
@@ -90,17 +109,23 @@ export const notificationService = {
 
     const notificationIds = [];
 
-    for (let i = 0; i < activities.length; i++) {
-      const activity = activities[i];
-      const timing = timings[i] || {};
-      const startTime = timing.start_time;
+    try {
+      for (let i = 0; i < activities.length; i++) {
+        const activity = activities[i];
+        const timing = timings[i] || {};
+        const startTime = timing.start_time;
 
-      if (activity && startTime) {
-        const id = await this.scheduleNotification(activity, startTime, date);
-        if (id) {
-          notificationIds.push(id);
+        if (activity && startTime) {
+          const id = await this.scheduleNotification(activity, startTime, date);
+          if (id) {
+            notificationIds.push(id);
+          }
         }
       }
+    } catch (error) {
+      // Avoid leaving a partial batch behind when a later activity fails.
+      await this.cancelNotifications(notificationIds);
+      throw error;
     }
 
     return notificationIds;
@@ -118,6 +143,15 @@ export const notificationService = {
     for (const id of notificationIds) {
       await Notifications.cancelScheduledNotificationAsync(id);
     }
+  },
+
+  // Recover activity reminder IDs after a JS refresh without touching other reminders.
+  async cancelActivityNotifications() {
+    const pending = await this.getAllScheduledNotifications();
+    const ids = pending
+      .filter((request) => request.content?.data?.source === 'orin-activity-start')
+      .map((request) => request.identifier);
+    await this.cancelNotifications(ids);
   },
 
   // Get all scheduled notifications

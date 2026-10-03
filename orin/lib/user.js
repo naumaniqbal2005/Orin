@@ -1,54 +1,55 @@
 import { tablesDB, DATABASE_ID } from './appwrite';
-import { getCurrentUserId, userDocumentPermissions } from './auth';
+import { getCurrentUserId } from './auth';
+import { executeDataOperation } from './backend';
+import { pickFields, TABLES } from './schema';
 
-const TABLE_ID = 'user';
+const PROFILE_FIELDS = [
+  'handle',
+  'timeZone',
+  'locale',
+  'wakeMinute',
+  'sleepMinute',
+  'weekStartsOn',
+  'activePresetId',
+  'onboardingVersion',
+];
+const initializing = new Map();
 
 export const userService = {
+  // The Function derives the account ID and creates an owner-only profile once.
   async create(profile = {}) {
-    try {
-      const userId = await getCurrentUserId();
-      return await tablesDB.createRow({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        rowId: userId,
-        data: {
-          wakeup_time: profile.wakeup_time ?? null,
-          sleep_time: profile.sleep_time ?? null,
-        },
-        permissions: userDocumentPermissions(userId),
-      });
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
+    const userId = await getCurrentUserId();
+    if (!initializing.has(userId)) {
+      const operation = executeDataOperation('profiles.ensure', {
+        ...pickFields(profile, PROFILE_FIELDS),
+        timeZone: profile.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }).finally(() => initializing.delete(userId));
+      initializing.set(userId, operation);
     }
+    return initializing.get(userId);
   },
 
   async get() {
+    const userId = await getCurrentUserId();
     try {
-      const userId = await getCurrentUserId();
       return await tablesDB.getRow({
         databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
+        tableId: TABLES.profiles,
         rowId: userId,
       });
     } catch (error) {
-      console.error('Error getting user:', error);
-      throw error;
+      if (error.type !== 'row_not_found' && error.type !== 'document_not_found') throw error;
+      return this.create();
     }
   },
 
   async update(data) {
-    try {
-      const userId = await getCurrentUserId();
-      return await tablesDB.updateRow({
-        databaseId: DATABASE_ID,
-        tableId: TABLE_ID,
-        rowId: userId,
-        data: { ...data },
-      });
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw error;
-    }
+    const profile = await this.get();
+    return tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId: TABLES.profiles,
+      rowId: profile.$id,
+      data: pickFields(data, PROFILE_FIELDS),
+    });
   },
 };

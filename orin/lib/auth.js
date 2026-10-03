@@ -10,7 +10,7 @@ export const authService = {
   async register(email, password, name) {
     await accountAuth.ensureGuestSession();
     const { user } = await accountAuth.upgradeGuestAccount({ email, password });
-    if (name?.trim()) await account.updateName({ name: name.trim() });
+    if (name?.trim()) return account.updateName({ name: name.trim() });
     return user;
   },
 };

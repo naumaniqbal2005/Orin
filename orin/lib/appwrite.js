@@ -1,6 +1,6 @@
 import 'react-native-url-polyfill/auto';
 
-import { Account, Avatars, Client, TablesDB } from 'react-native-appwrite';
+import { Account, Avatars, Client, Functions, TablesDB } from 'react-native-appwrite';
 
 export const client = new Client()
   .setProject(process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID)
@@ -10,5 +10,6 @@ export const client = new Client()
 export const account = new Account(client);
 export const avatars = new Avatars(client);
 export const tablesDB = new TablesDB(client);
+export const functions = new Functions(client);
 
 export const DATABASE_ID = process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID;

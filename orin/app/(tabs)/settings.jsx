@@ -14,6 +14,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useCallback, useEffect, useState } from 'react';
 import ThemedText from '../../components/ThemedText';
 import { userService } from '../../lib/user';
+import { minuteToTime, timeToMinute } from '../../lib/schema';
 import { ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react-native';
 import { Colors } from '../../constants/color';
 
@@ -60,8 +61,8 @@ export default function Settings() {
   const loadSettings = useCallback(async () => {
     try {
       const profile = await userService.get();
-      const wakeup = parseTimeString(profile.wakeup_time);
-      const sleep = parseTimeString(profile.sleep_time);
+      const wakeup = parseTimeString(minuteToTime(profile.wakeMinute));
+      const sleep = parseTimeString(minuteToTime(profile.sleepMinute));
       if (wakeup) setWakeupDate(wakeup);
       if (sleep) setSleepDate(sleep);
     } catch (error) {
@@ -89,11 +90,10 @@ export default function Settings() {
 
     setSaving(true);
     try {
-      try {
-        await userService.update({ wakeup_time, sleep_time });
-      } catch {
-        await userService.create({ wakeup_time, sleep_time });
-      }
+      await userService.update({
+        wakeMinute: timeToMinute(wakeup_time),
+        sleepMinute: timeToMinute(sleep_time),
+      });
       Alert.alert('Saved', 'Your schedule preferences have been updated.');
     } catch (error) {
       console.error('Error saving settings:', error);

@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateHeader from '../../components/DateHeader';
@@ -27,32 +27,36 @@ export default function Timeline() {
   const [loadingPresets, setLoadingPresets] = useState(false);
   const [timelineData, setTimelineData] = useState(null); // { activities: [], timings: [] }
   const [selectedPreset, setSelectedPreset] = useState(null);
+  const [restoringPreset, setRestoringPreset] = useState(true);
+  const [restoreError, setRestoreError] = useState(null);
+  const [savingPreset, setSavingPreset] = useState(false);
+  const presetRequest = useRef(0);
   const scheduledNotificationIds = useRef([]);
+  const notificationQueue = useRef(Promise.resolve());
 
   const getDayOfWeek = (date) => {
     return DAYS_OF_WEEK[date.getDay()];
   };
 
-  const last_selected_preset = async () => {
-    const userRow = await userService.get();
-    const presetId = userRow.last_selected_preset;
-    if (!presetId) return null;
-
-    // Fetch the full preset object using the ID
-    const result = await presetsService.list();
-    const presets = result.rows || result.documents || [];
-    return presets.find((p) => p.$id === presetId) || null;
-  };
-
-  const update_user_preset = async (preset) => {
+  const restoreLastPreset = useCallback(async () => {
+    const request = ++presetRequest.current;
+    setRestoringPreset(true);
+    setRestoreError(null);
     try {
-      await userService.update({
-        last_selected_preset: preset.$id,
-      });
-    } catch {
-      Alert.alert('Error', 'Failed to update last_selected_preset');
+      const profile = await userService.get();
+      const preset = profile.activePresetId
+        ? await presetsService.get(profile.activePresetId)
+        : null;
+      if (request === presetRequest.current) setSelectedPreset(preset);
+    } catch (error) {
+      if (request === presetRequest.current) {
+        setRestoreError('Could not load your last preset. Check your connection and retry.');
+        console.error('Could not restore the selected preset:', error);
+      }
+    } finally {
+      if (request === presetRequest.current) setRestoringPreset(false);
     }
-  };
+  }, []);
 
   const loadPresets = async () => {
     setLoadingPresets(true);
@@ -66,51 +70,28 @@ export default function Timeline() {
     }
   };
 
-  const handleLoadPreset = async (preset) => {
-    // Cancel existing notifications
-    if (scheduledNotificationIds.current.length > 0) {
-      await notificationService.cancelNotifications(scheduledNotificationIds.current);
-      scheduledNotificationIds.current = [];
-    }
-
-    setSelectedPreset(preset);
-    const dayOfWeek = getDayOfWeek(selectedDate);
-
-    // Find the schedule for the selected day
-    let daySchedule = null;
-    let activitiesForNotifications = [];
-    let timingsForNotifications = [];
-
-    if (preset.daySlots && preset.daySlots.length > 0) {
-      for (let i = 0; i < preset.daySlots.length; i++) {
-        const days = preset.daySlots[i] || [];
-        if (days.includes(dayOfWeek)) {
-          daySchedule = {
-            activities: preset.activities[i] || [],
-            timings: preset.timings[i] || [],
-          };
-          activitiesForNotifications = preset.activities[i] || [];
-          timingsForNotifications = preset.timings[i] || [];
-          break;
-        }
-      }
-    }
-
-    // Schedule notifications for today's activities
-    if (activitiesForNotifications.length > 0) {
-      const notificationIds = await notificationService.scheduleDayNotifications(
-        activitiesForNotifications,
-        timingsForNotifications,
-        selectedDate,
-      );
-      scheduledNotificationIds.current = notificationIds;
-    }
-
-    await update_user_preset(preset);
-    setTimelineData(daySchedule || { activities: [], timings: [] });
-    setPresetModalVisible(false);
+  const openPresetPicker = () => {
+    setPresetModalVisible(true);
+    loadPresets();
   };
 
+  const handleLoadPreset = async (preset) => {
+    if (savingPreset) return;
+    ++presetRequest.current;
+    setRestoringPreset(false);
+    setSavingPreset(true);
+    try {
+      // Persist first so a displayed selection survives the next reload.
+      await userService.update({ activePresetId: preset.$id });
+      setRestoreError(null);
+      setSelectedPreset(preset);
+      setPresetModalVisible(false);
+    } catch (error) {
+      Alert.alert('Could not save preset selection', error.message ?? 'Please try again.');
+    } finally {
+      setSavingPreset(false);
+    }
+  };
   const formatTimeDisplay = (timeStr) => {
     if (!timeStr) return '--:--';
     const [hours, minutes] = timeStr.split(':');
@@ -178,19 +159,12 @@ export default function Timeline() {
 
   // Load last selected preset only once on mount
   useEffect(() => {
-    const loadLastSelectedPreset = async () => {
-      try {
-        const preset = await last_selected_preset();
-        if (preset) {
-          setSelectedPreset(preset);
-        }
-      } catch {
-        // Silently handle error - no preset selected yet
-      }
+    const requestState = presetRequest;
+    restoreLastPreset();
+    return () => {
+      ++requestState.current;
     };
-
-    loadLastSelectedPreset();
-  }, []);
+  }, [restoreLastPreset]);
 
   // Update timeline when date changes (only if a preset is already selected)
   useEffect(() => {
@@ -221,25 +195,39 @@ export default function Timeline() {
     setTimelineData(daySchedule || { activities: [], timings: [] });
 
     // Reschedule notifications for the new date
+    let obsolete = false;
     const rescheduleNotifications = async () => {
+      if (obsolete) return;
       // Cancel existing notifications
-      if (scheduledNotificationIds.current.length > 0) {
-        await notificationService.cancelNotifications(scheduledNotificationIds.current);
-        scheduledNotificationIds.current = [];
-      }
+      await notificationService.cancelActivityNotifications();
+      scheduledNotificationIds.current = [];
 
       // Schedule new notifications for the new date's activities
-      if (activitiesForNotifications.length > 0) {
+      if (!obsolete && activitiesForNotifications.length > 0) {
         const notificationIds = await notificationService.scheduleDayNotifications(
           activitiesForNotifications,
           timingsForNotifications,
           selectedDate,
         );
-        scheduledNotificationIds.current = notificationIds;
+        if (obsolete) {
+          await notificationService.cancelNotifications(notificationIds);
+        } else {
+          scheduledNotificationIds.current = notificationIds;
+        }
       }
     };
 
-    rescheduleNotifications();
+    notificationQueue.current = notificationQueue.current
+      .then(rescheduleNotifications)
+      .catch((error) => {
+        console.error('Could not schedule activity reminders:', error);
+        if (!obsolete) {
+          Alert.alert('Reminders unavailable', error.message ?? 'Could not schedule reminders.');
+        }
+      });
+    return () => {
+      obsolete = true;
+    };
   }, [selectedDate, selectedPreset]);
 
   return (
@@ -257,26 +245,58 @@ export default function Timeline() {
           </View>
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => {
-              loadPresets();
-              setPresetModalVisible(true);
-            }}
+            onPress={openPresetPicker}
+            accessibilityRole="button"
+            accessibilityLabel="Load a preset"
           >
-            <Plus size={24} color={Colors.iconColour} strokeWidth={2} />
+            <Plus size={24} color={Colors.title} strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
 
         <DateHeader selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
+        <TouchableOpacity
+          style={styles.presetAction}
+          onPress={openPresetPicker}
+          accessibilityRole="button"
+          accessibilityLabel={selectedPreset ? 'Change preset' : 'Load preset'}
+        >
+          <Plus size={22} color={Colors.title} strokeWidth={2.5} />
+          <ThemedText title style={styles.presetActionLabel}>
+            {selectedPreset ? 'Change preset' : 'Load preset'}
+          </ThemedText>
+          {selectedPreset ? (
+            <ThemedText style={styles.activePresetName} numberOfLines={1}>
+              {selectedPreset.name}
+            </ThemedText>
+          ) : null}
+        </TouchableOpacity>
+
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {!timelineData || timelineData.activities.length === 0 ? (
+          {restoringPreset ? (
+            <View style={styles.emptyContainer}>
+              <ActivityIndicator size="large" color={Colors.title} />
+              <ThemedText style={styles.loadingText}>Loading your last preset...</ThemedText>
+            </View>
+          ) : restoreError ? (
+            <View style={styles.emptyContainer}>
+              <ThemedText style={styles.emptySubtext}>{restoreError}</ThemedText>
+              <TouchableOpacity
+                style={styles.presetAction}
+                onPress={restoreLastPreset}
+                accessibilityRole="button"
+              >
+                <ThemedText title>Retry loading preset</ThemedText>
+              </TouchableOpacity>
+            </View>
+          ) : !timelineData || timelineData.activities.length === 0 ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconContainer}>
                 <Clock size={48} color={Colors.iconColour} strokeWidth={1.5} />
               </View>
               <ThemedText style={styles.emptyText}>No activities scheduled</ThemedText>
               <ThemedText style={styles.emptySubtext}>
-                Tap the + button to load a preset schedule
+                Tap Load preset above to choose a schedule
               </ThemedText>
             </View>
           ) : (
@@ -361,6 +381,11 @@ export default function Timeline() {
                   <ActivityIndicator size="large" color={Colors.iconColour} />
                   <ThemedText style={styles.loadingText}>Loading presets...</ThemedText>
                 </View>
+              ) : savingPreset ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={Colors.title} />
+                  <ThemedText style={styles.loadingText}>Saving preset selection...</ThemedText>
+                </View>
               ) : presets.length === 0 ? (
                 <View style={styles.modalEmptyContainer}>
                   <ThemedText style={styles.modalEmptyText}>No presets available</ThemedText>
@@ -408,11 +433,14 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   headerLeft: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   header: {
+    flexShrink: 1,
     fontSize: 28,
     fontFamily: 'Poppins-Bold',
     color: Colors.title,
@@ -421,11 +449,37 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: Colors.white,
+    flexShrink: 0,
+    marginLeft: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: Colors.title,
+  },
+  presetAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 48,
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.title,
+  },
+  presetActionLabel: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Medium',
+  },
+  activePresetName: {
+    flex: 1,
+    fontSize: 13,
+    textAlign: 'right',
   },
   scrollView: {
     flex: 1,

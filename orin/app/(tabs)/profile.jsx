@@ -9,7 +9,7 @@ import { Colors } from '../../constants/color';
 
 export default function Profile() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, profileError, refreshUser } = useAuth();
 
   const handleLogout = async () => {
     await logout();
@@ -49,6 +49,13 @@ export default function Profile() {
           </View>
 
           <View style={styles.menuContainer}>
+            {profileError ? (
+              <TouchableOpacity style={styles.menuItem} onPress={refreshUser}>
+                <ThemedText style={styles.menuLabel}>
+                  Profile setup failed. Tap to retry.
+                </ThemedText>
+              </TouchableOpacity>
+            ) : null}
             {menuItems.map((item, index) => (
               <TouchableOpacity
                 key={index}

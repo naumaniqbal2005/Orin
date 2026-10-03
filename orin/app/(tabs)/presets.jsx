@@ -44,17 +44,6 @@ const DAYS_SHORT = {
   Sunday: 'Sun',
 };
 
-const DEFAULT_ACTIVITIES = [
-  { $id: 'default_1', name: 'Exercise', description: 'Gym, running, or working out' },
-  { $id: 'default_2', name: 'Breakfast', description: 'Healthy morning meal' },
-  { $id: 'default_3', name: 'Work', description: 'Job, study, or project focus' },
-  { $id: 'default_4', name: 'Lunch', description: 'Midday meal break' },
-  { $id: 'default_5', name: 'Yoga', description: 'Stretching or mindfulness' },
-  { $id: 'default_6', name: 'Reading', description: 'Books, articles, or learning' },
-  { $id: 'default_7', name: 'Dinner', description: 'Evening meal and relaxation' },
-  { $id: 'default_8', name: 'Sleep', description: 'Night rest or wind down' },
-];
-
 function createTimeDate(hours, minutes) {
   const date = new Date();
   date.setHours(hours, minutes, 0, 0);
@@ -91,6 +80,7 @@ function createEmptySlot() {
   return {
     id: nextLocalSlotId(),
     activityName: '',
+    activityId: null,
     start_time: '08:00',
     end_time: '09:00',
   };
@@ -177,7 +167,7 @@ export default function Presets() {
   }, [loadActivities, loadPresets]);
 
   const getActivitiesList = () => {
-    return availableActivities.length > 0 ? availableActivities : DEFAULT_ACTIVITIES;
+    return availableActivities;
   };
 
   const onRefresh = useCallback(() => {
@@ -220,6 +210,7 @@ export default function Presets() {
       for (let i = 0; i < preset.daySlots.length; i++) {
         const days = preset.daySlots[i] || [];
         const actList = preset.activities[i] || [];
+        const idList = preset.activityIds[i] || [];
         const timeList = preset.timings[i] || [];
 
         const slots = [];
@@ -229,6 +220,7 @@ export default function Presets() {
           slots.push({
             id: nextLocalSlotId(`group_${i}_slot_${j}`),
             activityName: actList[j] || '',
+            activityId: idList[j] || null,
             start_time: timing.start_time || '08:00',
             end_time: timing.end_time || '09:00',
           });
@@ -351,6 +343,7 @@ export default function Presets() {
       const signature = JSON.stringify(
         sortedSlots.map((s) => ({
           activityName: s.activityName,
+          activityId: s.activityId,
           start_time: s.start_time,
           end_time: s.end_time,
         })),
@@ -364,6 +357,7 @@ export default function Presets() {
           signature,
           days: [day],
           activities: sortedSlots.map((s) => s.activityName),
+          activityIds: sortedSlots.map((s) => s.activityId),
           timings: sortedSlots.map((s) => ({ start_time: s.start_time, end_time: s.end_time })),
         });
       }
@@ -371,6 +365,7 @@ export default function Presets() {
 
     const daySlots = groups.map((g) => g.days);
     const activities = groups.map((g) => g.activities);
+    const activityIds = groups.map((g) => g.activityIds);
     const timings = groups.map((g) => g.timings);
 
     try {
@@ -380,6 +375,7 @@ export default function Presets() {
           name: presetName,
           daySlots,
           activities,
+          activityIds,
           timings,
         });
       } else {
@@ -387,13 +383,14 @@ export default function Presets() {
           name: presetName,
           daySlots,
           activities,
+          activityIds,
           timings,
         });
       }
       setIsEditing(false);
       loadPresets();
-    } catch {
-      Alert.alert('Error', 'Failed to save preset. Please try again.');
+    } catch (error) {
+      Alert.alert('Error', error.message ?? 'Failed to save preset. Please try again.');
       setLoading(false);
     }
   };
@@ -788,7 +785,7 @@ export default function Presets() {
 
             {availableActivities.length === 0 && (
               <ThemedText style={styles.suggestionsAlert}>
-                Showing suggestions. Create custom ones in the Activities tab.
+                Create an activity in the Activities tab, then select it here.
               </ThemedText>
             )}
 
@@ -805,6 +802,7 @@ export default function Presets() {
                         daySlots[activeSlot.slotIndex] = {
                           ...daySlots[activeSlot.slotIndex],
                           activityName: activity.name,
+                          activityId: activity.$id,
                         };
                         newSchedule[activeSlot.day] = daySlots;
                         return newSchedule;

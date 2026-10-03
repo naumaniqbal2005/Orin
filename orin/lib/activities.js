@@ -1,4 +1,4 @@
-import { ID, Query } from 'appwrite';
+import { ID, Query } from 'react-native-appwrite';
 import { tablesDB, DATABASE_ID } from './appwrite';
 import { getCurrentUserId, userDocumentPermissions } from './auth';
 
