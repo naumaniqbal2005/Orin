@@ -152,8 +152,28 @@ export const presetsService = {
       Query.equal('userId', userId),
       Query.equal('presetId', id),
     ]);
-    guardTransactionSize(1 + slots.length);
+    guardTransactionSize(2 + slots.length);
     return withTransaction(async (transactionId) => {
+
+      const profile = await tablesDB.getRow({
+        databaseId: DATABASE_ID,
+        tableId: TABLES.profiles,
+        rowId: userId,
+        transactionId,
+      });
+
+      const wasActive = profile.activePresetId === id;
+
+      if (wasActive) {
+        await tablesDB.updateRow({
+          databaseId: DATABASE_ID,
+          tableId: TABLES.profiles,
+          rowId: userId,
+          data: { activePresetId: null },
+          transactionId,
+        });
+      }
+      
       for (const slot of slots) {
         await tablesDB.deleteRow({
           databaseId: DATABASE_ID,
@@ -162,12 +182,14 @@ export const presetsService = {
           transactionId,
         });
       }
-      return tablesDB.deleteRow({
+      await tablesDB.deleteRow({
         databaseId: DATABASE_ID,
         tableId: TABLES.presets,
         rowId: id,
         transactionId,
       });
+
+      return { wasActive };
     });
   },
 };

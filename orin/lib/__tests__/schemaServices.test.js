@@ -45,6 +45,38 @@ const preset = {
   ],
 };
 
+test.each([true, false])(
+  'preset deletion clears the profile only when active=%s',
+  async (active) => {
+    tablesDB.getRow.mockImplementation(async ({ tableId }) =>
+      tableId === 'profiles'
+        ? { $id: 'owner', activePresetId: active ? 'p' : 'other' }
+        : { $id: 'p', userId: 'owner', name: 'Routine' },
+    );
+    tablesDB.listRows.mockResolvedValue({ rows: [] });
+    tablesDB.updateRow.mockClear();
+    expect(await presetsService.delete('p')).toEqual({ wasActive: active });
+    if (active) {
+      expect(tablesDB.updateRow).toHaveBeenCalledWith({
+        databaseId: 'db',
+        tableId: 'profiles',
+        rowId: 'owner',
+        data: { activePresetId: null },
+        transactionId: 'tx',
+      });
+    } else {
+      expect(tablesDB.updateRow).not.toHaveBeenCalled();
+    }
+    expect(tablesDB.deleteRow).toHaveBeenCalledWith({
+      databaseId: 'db',
+      tableId: 'presets',
+      rowId: 'p',
+      transactionId: 'tx',
+    });
+    expect(tablesDB.updateTransaction).toHaveBeenCalledWith({ transactionId: 'tx', commit: true });
+  },
+);
+
 beforeEach(() => {
   jest.clearAllMocks();
   tablesDB.createTransaction.mockResolvedValue({ $id: 'tx' });

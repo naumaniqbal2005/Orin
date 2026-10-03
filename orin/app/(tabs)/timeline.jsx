@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateHeader from '../../components/DateHeader';
@@ -44,9 +45,17 @@ export default function Timeline() {
     setRestoreError(null);
     try {
       const profile = await userService.get();
-      const preset = profile.activePresetId
-        ? await presetsService.get(profile.activePresetId)
-        : null;
+      let preset = null;
+      if (profile.activePresetId) {
+        try {
+          preset = await presetsService.get(profile.activePresetId);
+        } catch (error) {
+          const missing = error.type === 'row_not_found' || error.type === 'document_not_found';
+          if (!missing) throw error;
+          if (request !== presetRequest.current) return;
+          await userService.update({ activePresetId: null });
+        }
+      }
       if (request === presetRequest.current) setSelectedPreset(preset);
     } catch (error) {
       if (request === presetRequest.current) {
@@ -157,18 +166,32 @@ export default function Timeline() {
     return processed;
   };
 
-  // Load last selected preset only once on mount
-  useEffect(() => {
-    const requestState = presetRequest;
-    restoreLastPreset();
-    return () => {
-      ++requestState.current;
-    };
-  }, [restoreLastPreset]);
+  // Recheck the saved selection after visiting the preset editor.
+  useFocusEffect(
+    useCallback(() => {
+      const requestState = presetRequest;
+      restoreLastPreset();
+      return () => {
+        ++requestState.current;
+      };
+    }, [restoreLastPreset]),
+  );
 
   // Update timeline when date changes (only if a preset is already selected)
   useEffect(() => {
-    if (!selectedPreset) return;
+    if (!selectedPreset) {
+      setTimelineData(null);
+      // Wait for any previous scheduling batch before clearing its reminders.
+      notificationQueue.current = notificationQueue.current
+        .then(() => notificationService.cancelActivityNotifications())
+        .then(() => {
+          scheduledNotificationIds.current = [];
+        })
+        .catch((error) => {
+          console.error('Could not clear activity reminders:', error);
+        });
+      return;
+    }
 
     const dayOfWeek = getDayOfWeek(selectedDate);
 

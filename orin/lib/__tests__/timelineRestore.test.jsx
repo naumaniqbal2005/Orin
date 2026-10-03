@@ -3,6 +3,20 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-
 import Timeline from '../../app/(tabs)/timeline';
 import { userService } from '../user';
 import { presetsService } from '../presets';
+import { FocusProvider } from 'expo-router';
+import { notificationService } from '../notifications';
+
+jest.mock('expo-router', () => {
+  const React = require('react');
+  const FocusContext = React.createContext(true);
+  return {
+    FocusProvider: FocusContext.Provider,
+    useFocusEffect: (callback) => {
+      const focused = React.useContext(FocusContext);
+      React.useEffect(() => (focused ? callback() : undefined), [callback, focused]);
+    },
+  };
+});
 
 jest.mock('../user', () => ({ userService: { get: jest.fn(), update: jest.fn() } }));
 jest.mock('../presets', () => ({ presetsService: { get: jest.fn(), list: jest.fn() } }));
@@ -35,11 +49,66 @@ function deferred() {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  jest.resetAllMocks();
+  notificationService.cancelActivityNotifications.mockResolvedValue();
+  notificationService.cancelNotifications.mockResolvedValue();
+  notificationService.scheduleDayNotifications.mockResolvedValue([]);
   userService.get.mockResolvedValue({ activePresetId: null });
   userService.update.mockResolvedValue({ activePresetId: 'saved' });
   presetsService.get.mockResolvedValue(preset);
   presetsService.list.mockResolvedValue({ rows: [preset] });
+});
+
+test('returning to Timeline clears a deleted active preset and its reminders', async () => {
+  userService.get.mockResolvedValue({ activePresetId: 'saved' });
+  const view = await render(
+    <FocusProvider value={true}>
+      <Timeline />
+    </FocusProvider>,
+  );
+  await waitFor(() => expect(screen.getByText('Saved routine')).toBeTruthy());
+  await view.rerender(
+    <FocusProvider value={false}>
+      <Timeline />
+    </FocusProvider>,
+  );
+  userService.get.mockResolvedValue({ activePresetId: null });
+  notificationService.cancelActivityNotifications.mockClear();
+  await view.rerender(
+    <FocusProvider value={true}>
+      <Timeline />
+    </FocusProvider>,
+  );
+  await waitFor(() => expect(screen.getByText('Load preset')).toBeTruthy());
+  expect(screen.queryByText('Saved routine')).toBeNull();
+  expect(screen.getByText('No activities scheduled')).toBeTruthy();
+  await waitFor(() => expect(notificationService.cancelActivityNotifications).toHaveBeenCalled());
+});
+
+test.each(['row_not_found', 'document_not_found'])(
+  'a dangling active preset is cleared for %s without a restore error',
+  async (type) => {
+    userService.get.mockResolvedValue({ activePresetId: 'deleted' });
+    presetsService.get.mockRejectedValue({ type, code: 404 });
+    await render(<Timeline />);
+    await waitFor(() => expect(screen.queryByText('Loading your last preset...')).toBeNull());
+    expect(userService.update).toHaveBeenCalledWith({ activePresetId: null });
+    expect(screen.getByText('No activities scheduled')).toBeTruthy();
+    expect(screen.queryByText('Retry loading preset')).toBeNull();
+  },
+);
+
+test('a table error does not erase the saved preset selection', async () => {
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+  userService.get.mockResolvedValue({ activePresetId: 'saved' });
+  presetsService.get.mockRejectedValue({ type: 'table_not_found', code: 404 });
+  try {
+    await render(<Timeline />);
+    await waitFor(() => expect(screen.getByText('Retry loading preset')).toBeTruthy());
+    expect(userService.update).not.toHaveBeenCalled();
+  } finally {
+    log.mockRestore();
+  }
 });
 
 test('refresh shows loading and restores the exact saved preset without listing all presets', async () => {

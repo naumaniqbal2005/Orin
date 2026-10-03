@@ -31,6 +31,7 @@ import { Colors } from '../../constants/color';
 import { presetsService } from '../../lib/presets';
 import { activitiesService } from '../../lib/activities';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { notificationService } from '../../lib/notifications';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -407,7 +408,16 @@ export default function Presets() {
         onPress: async () => {
           try {
             setLoading(true);
-            await presetsService.delete(editingPresetId);
+            const { wasActive } = await presetsService.delete(editingPresetId);
+
+            if (wasActive) {
+              await notificationService.cancelActivityNotifications().catch((error) => {
+                Alert.alert('Reminder cleanup failed',
+                'The preset was deleted. Open Timeline to retry clearing its reminders.'
+              );
+              });
+            }
+
             setIsEditing(false);
             loadPresets();
           } catch {
